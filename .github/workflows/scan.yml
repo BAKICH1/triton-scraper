@@ -1,20 +1,21 @@
 name: scan
 on:
+  workflow_dispatch: {}      # основной механизм: ранн сам запускает следующий
   schedule:
-    - cron: "*/5 * * * *"   # каждые 5 минут (GitHub иногда задерживает до ~10)
-  workflow_dispatch: {}      # можно запускать вручную кнопкой
+    - cron: "17 * * * *"     # страховка раз в час: если цепочка умрёт — разбудит
 
 concurrency:
   group: scan
-  cancel-in-progress: false  # раунды выстраиваются в очередь, не пересекаются
+  cancel-in-progress: false  # циклы выстраиваются в очередь, не пересекаются
 
 permissions:
-  contents: write            # только для суточного heartbeat-коммита
+  contents: write            # суточный heartbeat
+  actions: write             # самозапуск следующего цикла
 
 jobs:
   scan-publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
 
@@ -57,3 +58,11 @@ jobs:
             git add data/last_day.txt
             git commit -m "heartbeat $D" && git push || echo "push пропущен"
           fi
+
+      - name: Следующий цикл (цепочка)
+        if: always()
+        run: |
+          sleep 180
+          gh workflow run scan.yml --ref main
+        env:
+          GH_TOKEN: ${{ github.token }}
