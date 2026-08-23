@@ -8,6 +8,9 @@ concurrency:
   group: scan
   cancel-in-progress: false  # раунды выстраиваются в очередь, не пересекаются
 
+permissions:
+  contents: write            # только для суточного heartbeat-коммита
+
 jobs:
   scan-publish:
     runs-on: ubuntu-latest
@@ -19,19 +22,38 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Восстановить базу из кэша
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            data/ads.db
+            data/publish_state.json
+          key: ads-db-${{ github.run_number }}
+          restore-keys: |
+            ads-db-
+
       - name: Скан + публикация
         run: python scan_once.py
         env:
           HERENOW_SLUG: ${{ secrets.HERENOW_SLUG }}
           HERENOW_CLAIM: ${{ secrets.HERENOW_CLAIM }}
 
-      - name: Сохранить базу между запусками
+      - name: Сохранить базу в кэш
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            data/ads.db
+            data/publish_state.json
+          key: ads-db-${{ github.run_number }}
+
+      - name: Heartbeat (не даём GitHub выключить расписание)
         run: |
-          git config user.name "scan-bot"
-          git config user.email "actions@github.com"
-          git add -f data/ads.db 2>/dev/null || true
-          [ -f data/ads.db-wal ] && git add -f data/ads.db-wal || true
-          if git diff --cached --quiet; then echo "нет изменений"; else
-            git commit -m "db: $(date -u '+%Y-%m-%d %H:%M') UTC"
-            git push
+          D=$(date -u +%F)
+          if [ "$(cat data/last_day.txt 2>/dev/null)" != "$D" ]; then
+            echo "$D" > data/last_day.txt
+            git config user.name "scan-bot"
+            git config user.email "actions@github.com"
+            git add data/last_day.txt
+            git commit -m "heartbeat $D" && git push || echo "push пропущен"
           fi
