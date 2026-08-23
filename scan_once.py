@@ -27,6 +27,14 @@ def main() -> int:
           "| статус:", mon.status,
           ("| ошибка: " + mon.last_error) if mon.last_error else "")
     ok = publish.republish()
+    # сжать WAL в основной файл — чтобы кэш/копия базы были полными
+    try:
+        import sqlite3
+        c = sqlite3.connect(db.DB_PATH)
+        c.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        c.close()
+    except Exception:
+        pass
     return 0 if ok else 1
 
 
