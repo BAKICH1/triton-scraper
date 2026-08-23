@@ -1,0 +1,8 @@
+data/ads.db*
+data/herenow_claim.txt
+data/publish_state.json
+data/imgcache/
+snapshot_*
+__pycache__/
+*.pyc
+.github/workflows/scan.yml.bak

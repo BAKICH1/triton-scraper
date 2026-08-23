@@ -1,0 +1,29 @@
+{
+  "scan_interval_sec": 60,
+  "global_pages": 3,
+  "request_delay_sec": 4,
+  "backoff_max_sec": 600,
+  "retention_days": 21,
+  "views_per_round": 20,
+  "views_refresh_hours": 4,
+  "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+  "snapshot_ads": 800,
+  "views_priority_cats": [
+    161,
+    80,
+    153,
+    192
+  ],
+  "hot_window_min": 22,
+  "views_board_n": 48,
+  "views_hot_first": 14,
+  "views_hot_retop": 16,
+  "views_exclude_titles": [
+    "iphone",
+    "айфон",
+    "Айфон",
+    "АЙФОН"
+  ],
+  "republish_sec": 90,
+  "views_reterm": 10
+}

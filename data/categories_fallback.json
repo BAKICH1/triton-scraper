@@ -1,0 +1,890 @@
+[
+ {
+  "id": 210,
+  "slug": "auto-rad-boot",
+  "name": "Auto, Rad & Boot",
+  "parent": null
+ },
+ {
+  "id": 216,
+  "slug": "autos",
+  "name": "Autos",
+  "parent": 210
+ },
+ {
+  "id": 217,
+  "slug": "fahrraeder",
+  "name": "Fahrräder & Zubehör",
+  "parent": 210
+ },
+ {
+  "id": 223,
+  "slug": "autoteile-reifen",
+  "name": "Autoteile & Reifen",
+  "parent": 210
+ },
+ {
+  "id": 211,
+  "slug": "boote-bootszubehoer",
+  "name": "Boote & Bootszubehör",
+  "parent": 210
+ },
+ {
+  "id": 305,
+  "slug": "motorraeder-roller",
+  "name": "Motorräder & Motorroller",
+  "parent": 210
+ },
+ {
+  "id": 306,
+  "slug": "motorraeder-roller-teile",
+  "name": "Motorradteile & Zubehör",
+  "parent": 210
+ },
+ {
+  "id": 276,
+  "slug": "anhaenger-nutzfahrzeuge",
+  "name": "Nutzfahrzeuge & Anhänger",
+  "parent": 210
+ },
+ {
+  "id": 280,
+  "slug": "reparaturen-dienstleistungen",
+  "name": "Reparaturen & Dienstleistungen",
+  "parent": 210
+ },
+ {
+  "id": 220,
+  "slug": "wohnwagen-mobile",
+  "name": "Wohnwagen & -mobile",
+  "parent": 210
+ },
+ {
+  "id": 195,
+  "slug": "immobilien",
+  "name": "Immobilien",
+  "parent": null
+ },
+ {
+  "id": 403,
+  "slug": "neubauprojekte",
+  "name": "Neubauprojekte",
+  "parent": 195
+ },
+ {
+  "id": 203,
+  "slug": "wohnung-mieten",
+  "name": "Mietwohnungen",
+  "parent": 195
+ },
+ {
+  "id": 208,
+  "slug": "haus-kaufen",
+  "name": "Häuser zum Kauf",
+  "parent": 195
+ },
+ {
+  "id": 199,
+  "slug": "auf-zeit-wg",
+  "name": "Auf Zeit & WG",
+  "parent": 195
+ },
+ {
+  "id": 402,
+  "slug": "container",
+  "name": "Container",
+  "parent": 195
+ },
+ {
+  "id": 196,
+  "slug": "wohnung-kaufen",
+  "name": "Eigentumswohnungen",
+  "parent": 195
+ },
+ {
+  "id": 275,
+  "slug": "ferienwohnung-ferienhaus",
+  "name": "Ferien- & Auslandsimmobilien",
+  "parent": 195
+ },
+ {
+  "id": 197,
+  "slug": "garage-lagerraum",
+  "name": "Garagen & Stellplätze",
+  "parent": 195
+ },
+ {
+  "id": 277,
+  "slug": "gewerbeimmobilien",
+  "name": "Gewerbeimmobilien",
+  "parent": 195
+ },
+ {
+  "id": 207,
+  "slug": "grundstuecke-garten",
+  "name": "Grundstücke & Gärten",
+  "parent": 195
+ },
+ {
+  "id": 205,
+  "slug": "haus-mieten",
+  "name": "Häuser zur Miete",
+  "parent": 195
+ },
+ {
+  "id": 238,
+  "slug": "umzug-transport",
+  "name": "Umzug & Transport",
+  "parent": 195
+ },
+ {
+  "id": 80,
+  "slug": "haus-garten",
+  "name": "Haus & Garten",
+  "parent": null
+ },
+ {
+  "id": 86,
+  "slug": "kueche-esszimmer",
+  "name": "Küche & Esszimmer",
+  "parent": 80
+ },
+ {
+  "id": 88,
+  "slug": "wohnzimmer",
+  "name": "Wohnzimmer",
+  "parent": 80
+ },
+ {
+  "id": 91,
+  "slug": "badezimmer",
+  "name": "Badezimmer",
+  "parent": 80
+ },
+ {
+  "id": 93,
+  "slug": "bueromoebel",
+  "name": "Büro",
+  "parent": 80
+ },
+ {
+  "id": 246,
+  "slug": "dekoration",
+  "name": "Dekoration",
+  "parent": 80
+ },
+ {
+  "id": 239,
+  "slug": "dienstleistungen-haus-garten",
+  "name": "Dienstleistungen Haus & Garten",
+  "parent": 80
+ },
+ {
+  "id": 89,
+  "slug": "garten-pflanzen",
+  "name": "Gartenzubehör & Pflanzen",
+  "parent": 80
+ },
+ {
+  "id": 90,
+  "slug": "heimtextilien",
+  "name": "Heimtextilien",
+  "parent": 80
+ },
+ {
+  "id": 84,
+  "slug": "heimwerken",
+  "name": "Heimwerken",
+  "parent": 80
+ },
+ {
+  "id": 82,
+  "slug": "lampen-licht",
+  "name": "Lampen & Licht",
+  "parent": 80
+ },
+ {
+  "id": 81,
+  "slug": "schlafzimmer",
+  "name": "Schlafzimmer",
+  "parent": 80
+ },
+ {
+  "id": 153,
+  "slug": "mode-beauty",
+  "name": "Mode & Beauty",
+  "parent": null
+ },
+ {
+  "id": 154,
+  "slug": "kleidung-damen",
+  "name": "Damenbekleidung",
+  "parent": 153
+ },
+ {
+  "id": 160,
+  "slug": "kleidung-herren",
+  "name": "Herrenbekleidung",
+  "parent": 153
+ },
+ {
+  "id": 224,
+  "slug": "beauty-gesundheit",
+  "name": "Beauty & Gesundheit",
+  "parent": 153
+ },
+ {
+  "id": 159,
+  "slug": "schuhe-damen",
+  "name": "Damenschuhe",
+  "parent": 153
+ },
+ {
+  "id": 158,
+  "slug": "schuhe-herren",
+  "name": "Herrenschuhe",
+  "parent": 153
+ },
+ {
+  "id": 156,
+  "slug": "accessoires-schmuck",
+  "name": "Taschen & Accessoires",
+  "parent": 153
+ },
+ {
+  "id": 157,
+  "slug": "uhren-schmuck",
+  "name": "Uhren & Schmuck",
+  "parent": 153
+ },
+ {
+  "id": 161,
+  "slug": "multimedia-elektronik",
+  "name": "Elektronik",
+  "parent": null
+ },
+ {
+  "id": 173,
+  "slug": "handy-telekom",
+  "name": "Handy & Telefon",
+  "parent": 161
+ },
+ {
+  "id": 176,
+  "slug": "haushaltsgeraete",
+  "name": "Haushaltsgeräte",
+  "parent": 161
+ },
+ {
+  "id": 172,
+  "slug": "audio-hifi",
+  "name": "Audio & Hifi",
+  "parent": 161
+ },
+ {
+  "id": 226,
+  "slug": "dienstleistungen-edv",
+  "name": "Dienstleistungen Elektronik",
+  "parent": 161
+ },
+ {
+  "id": 245,
+  "slug": "foto",
+  "name": "Foto",
+  "parent": 161
+ },
+ {
+  "id": 279,
+  "slug": "konsolen",
+  "name": "Konsolen",
+  "parent": 161
+ },
+ {
+  "id": 278,
+  "slug": "notebooks",
+  "name": "Laptops & Notebooks",
+  "parent": 161
+ },
+ {
+  "id": 228,
+  "slug": "pcs",
+  "name": "PCs",
+  "parent": 161
+ },
+ {
+  "id": 225,
+  "slug": "pc-zubehoer-software",
+  "name": "PC-Zubehör & Software",
+  "parent": 161
+ },
+ {
+  "id": 285,
+  "slug": "tablets-reader",
+  "name": "Tablets & Reader",
+  "parent": 161
+ },
+ {
+  "id": 175,
+  "slug": "tv-video",
+  "name": "TV & Video",
+  "parent": 161
+ },
+ {
+  "id": 227,
+  "slug": "pc-videospiele",
+  "name": "Videospiele",
+  "parent": 161
+ },
+ {
+  "id": 405,
+  "slug": "wearables",
+  "name": "Wearables",
+  "parent": 161
+ },
+ {
+  "id": 406,
+  "slug": "wearables-zubehor",
+  "name": "Wearables Zubehör",
+  "parent": 161
+ },
+ {
+  "id": 130,
+  "slug": "haustiere",
+  "name": "Haustiere",
+  "parent": null
+ },
+ {
+  "id": 134,
+  "slug": "hunde",
+  "name": "Hunde",
+  "parent": 130
+ },
+ {
+  "id": 136,
+  "slug": "katzen",
+  "name": "Katzen",
+  "parent": 130
+ },
+ {
+  "id": 138,
+  "slug": "fische",
+  "name": "Fische",
+  "parent": 130
+ },
+ {
+  "id": 132,
+  "slug": "kleintiere",
+  "name": "Kleintiere",
+  "parent": 130
+ },
+ {
+  "id": 135,
+  "slug": "nutztiere",
+  "name": "Nutztiere",
+  "parent": 130
+ },
+ {
+  "id": 139,
+  "slug": "pferde",
+  "name": "Pferde",
+  "parent": 130
+ },
+ {
+  "id": 133,
+  "slug": "tierbetreuung-training",
+  "name": "Tierbetreuung & Training",
+  "parent": 130
+ },
+ {
+  "id": 283,
+  "slug": "vermisste-tiere",
+  "name": "Vermisste Tiere",
+  "parent": 130
+ },
+ {
+  "id": 243,
+  "slug": "vogel",
+  "name": "Vögel",
+  "parent": 130
+ },
+ {
+  "id": 313,
+  "slug": "zubehoer",
+  "name": "Zubehör",
+  "parent": 130
+ },
+ {
+  "id": 17,
+  "slug": "familie-kind-baby",
+  "name": "Familie, Kind & Baby",
+  "parent": null
+ },
+ {
+  "id": 22,
+  "slug": "baby-kinderkleidung",
+  "name": "Baby- & Kinderkleidung",
+  "parent": 17
+ },
+ {
+  "id": 25,
+  "slug": "kinderwagen-buggys",
+  "name": "Kinderwagen & Buggys",
+  "parent": 17
+ },
+ {
+  "id": 236,
+  "slug": "altenpflege",
+  "name": "Altenpflege",
+  "parent": 17
+ },
+ {
+  "id": 19,
+  "slug": "baby-kinderschuhe",
+  "name": "Baby- & Kinderschuhe",
+  "parent": 17
+ },
+ {
+  "id": 258,
+  "slug": "babyausstattung",
+  "name": "Baby-Ausstattung",
+  "parent": 17
+ },
+ {
+  "id": 21,
+  "slug": "babyschalen-kindersitze",
+  "name": "Babyschalen & Kindersitze",
+  "parent": 17
+ },
+ {
+  "id": 237,
+  "slug": "babysitter-kinderbetreuung",
+  "name": "Babysitter/-in & Kinderbetreuung",
+  "parent": 17
+ },
+ {
+  "id": 20,
+  "slug": "kinderzimmermoebel",
+  "name": "Kinderzimmermöbel",
+  "parent": 17
+ },
+ {
+  "id": 23,
+  "slug": "spielzeug",
+  "name": "Spielzeug",
+  "parent": 17
+ },
+ {
+  "id": 102,
+  "slug": "jobs",
+  "name": "Jobs",
+  "parent": null
+ },
+ {
+  "id": 110,
+  "slug": "gastronomie-tourismus",
+  "name": "Gastronomie & Tourismus",
+  "parent": 102
+ },
+ {
+  "id": 111,
+  "slug": "bau-handwerk-produktion",
+  "name": "Bau, Handwerk & Produktion",
+  "parent": 102
+ },
+ {
+  "id": 107,
+  "slug": "heimarbeit-mini-nebenjobs",
+  "name": "Mini- & Nebenjobs",
+  "parent": 102
+ },
+ {
+  "id": 118,
+  "slug": "ausbildung",
+  "name": "Ausbildung",
+  "parent": 102
+ },
+ {
+  "id": 114,
+  "slug": "bueroarbeit-verwaltung",
+  "name": "Büroarbeit & Verwaltung",
+  "parent": 102
+ },
+ {
+  "id": 105,
+  "slug": "kundenservice-callcenter",
+  "name": "Kundenservice & Call Center",
+  "parent": 102
+ },
+ {
+  "id": 125,
+  "slug": "praktika",
+  "name": "Praktika",
+  "parent": 102
+ },
+ {
+  "id": 123,
+  "slug": "sozialer-sektor-pflege",
+  "name": "Sozialer Sektor & Pflege",
+  "parent": 102
+ },
+ {
+  "id": 247,
+  "slug": "transport-logistik-verkehr",
+  "name": "Transport, Logistik & Verkehr",
+  "parent": 102
+ },
+ {
+  "id": 117,
+  "slug": "vertrieb-einkauf-verkauf",
+  "name": "Vertrieb, Einkauf & Verkauf",
+  "parent": 102
+ },
+ {
+  "id": 109,
+  "slug": "sonstige-berufe",
+  "name": "Weitere Jobs",
+  "parent": 102
+ },
+ {
+  "id": 185,
+  "slug": "freizeit-nachbarschaft",
+  "name": "Freizeit, Hobby & Nachbarschaft",
+  "parent": null
+ },
+ {
+  "id": 240,
+  "slug": "kunst",
+  "name": "Kunst & Antiquitäten",
+  "parent": 185
+ },
+ {
+  "id": 234,
+  "slug": "sammeln",
+  "name": "Sammeln",
+  "parent": 185
+ },
+ {
+  "id": 232,
+  "slug": "esoterik-spirituelles",
+  "name": "Esoterik & Spirituelles",
+  "parent": 185
+ },
+ {
+  "id": 248,
+  "slug": "essen-trinken",
+  "name": "Essen & Trinken",
+  "parent": 185
+ },
+ {
+  "id": 187,
+  "slug": "freizeitaktivitaeten",
+  "name": "Freizeitaktivitäten",
+  "parent": 185
+ },
+ {
+  "id": 282,
+  "slug": "handarbeit-basteln-kunsthandwerk",
+  "name": "Handarbeit, Basteln & Kunsthandwerk",
+  "parent": 185
+ },
+ {
+  "id": 191,
+  "slug": "kuenstler-musiker",
+  "name": "Künstler/-in & Musiker/-in",
+  "parent": 185
+ },
+ {
+  "id": 249,
+  "slug": "modellbau",
+  "name": "Modellbau",
+  "parent": 185
+ },
+ {
+  "id": 233,
+  "slug": "reise-eventservices",
+  "name": "Reise & Eventservices",
+  "parent": 185
+ },
+ {
+  "id": 230,
+  "slug": "sport-camping",
+  "name": "Sport & Camping",
+  "parent": 185
+ },
+ {
+  "id": 250,
+  "slug": "troedel-kistenweise",
+  "name": "Trödel",
+  "parent": 185
+ },
+ {
+  "id": 189,
+  "slug": "verloren-gefunden",
+  "name": "Verloren & Gefunden",
+  "parent": 185
+ },
+ {
+  "id": 73,
+  "slug": "musik-film-buecher",
+  "name": "Musik, Filme & Bücher",
+  "parent": null
+ },
+ {
+  "id": 76,
+  "slug": "buecher-zeitschriften",
+  "name": "Bücher & Zeitschriften",
+  "parent": 73
+ },
+ {
+  "id": 79,
+  "slug": "film-dvd",
+  "name": "Film & DVD",
+  "parent": 73
+ },
+ {
+  "id": 281,
+  "slug": "buero-schreibwaren",
+  "name": "Büro & Schreibwaren",
+  "parent": 73
+ },
+ {
+  "id": 284,
+  "slug": "comics",
+  "name": "Comics",
+  "parent": 73
+ },
+ {
+  "id": 77,
+  "slug": "fachbuecher-schule-studium",
+  "name": "Fachbücher, Schule & Studium",
+  "parent": 73
+ },
+ {
+  "id": 78,
+  "slug": "musik-cds",
+  "name": "Musik & CDs",
+  "parent": 73
+ },
+ {
+  "id": 74,
+  "slug": "musikinstrumente",
+  "name": "Musikinstrumente",
+  "parent": 73
+ },
+ {
+  "id": 231,
+  "slug": "eintrittskarten-tickets",
+  "name": "Eintrittskarten & Tickets",
+  "parent": null
+ },
+ {
+  "id": 255,
+  "slug": "konzerte",
+  "name": "Konzerte",
+  "parent": 231
+ },
+ {
+  "id": 254,
+  "slug": "comedy-kabarett",
+  "name": "Comedy & Kabarett",
+  "parent": 231
+ },
+ {
+  "id": 287,
+  "slug": "gutscheine",
+  "name": "Gutscheine",
+  "parent": 231
+ },
+ {
+  "id": 252,
+  "slug": "kinder",
+  "name": "Kinder",
+  "parent": 231
+ },
+ {
+  "id": 257,
+  "slug": "sport",
+  "name": "Sport",
+  "parent": 231
+ },
+ {
+  "id": 251,
+  "slug": "klassik-kultur",
+  "name": "Theater & Musical",
+  "parent": 231
+ },
+ {
+  "id": 256,
+  "slug": "sonstige",
+  "name": "Weitere Eintrittskarten & Tickets",
+  "parent": 231
+ },
+ {
+  "id": 297,
+  "slug": "dienstleistungen",
+  "name": "Dienstleistungen",
+  "parent": null
+ },
+ {
+  "id": 289,
+  "slug": "auto-rad-boot",
+  "name": "Auto, Rad & Boot",
+  "parent": 297
+ },
+ {
+  "id": 290,
+  "slug": "babysitter-kinderbetreuung",
+  "name": "Babysitter/-in & Kinderbetreuung",
+  "parent": 297
+ },
+ {
+  "id": 291,
+  "slug": "haus-garten",
+  "name": "Haus & Garten",
+  "parent": 297
+ },
+ {
+  "id": 288,
+  "slug": "altenpflege",
+  "name": "Altenpflege",
+  "parent": 297
+ },
+ {
+  "id": 293,
+  "slug": "multimedia-elektronik",
+  "name": "Elektronik",
+  "parent": 297
+ },
+ {
+  "id": 292,
+  "slug": "kuenstler-musiker",
+  "name": "Künstler/-in & Musiker/-in",
+  "parent": 297
+ },
+ {
+  "id": 294,
+  "slug": "reise-event",
+  "name": "Reise & Event",
+  "parent": 297
+ },
+ {
+  "id": 295,
+  "slug": "tierbetreuung-training",
+  "name": "Tierbetreuung & Training",
+  "parent": 297
+ },
+ {
+  "id": 296,
+  "slug": "umzug-transport",
+  "name": "Umzug & Transport",
+  "parent": 297
+ },
+ {
+  "id": 298,
+  "slug": "sonstige",
+  "name": "Weitere Dienstleistungen",
+  "parent": 297
+ },
+ {
+  "id": 272,
+  "slug": "zu-verschenken-tauschen",
+  "name": "Verschenken & Tauschen",
+  "parent": null
+ },
+ {
+  "id": 192,
+  "slug": "zu-verschenken",
+  "name": "Verschenken",
+  "parent": 272
+ },
+ {
+  "id": 274,
+  "slug": "verleihen",
+  "name": "Verleihen",
+  "parent": 272
+ },
+ {
+  "id": 235,
+  "slug": "unterricht-kurse",
+  "name": "Unterricht & Kurse",
+  "parent": null
+ },
+ {
+  "id": 268,
+  "slug": "nachhilfe",
+  "name": "Nachhilfe",
+  "parent": 235
+ },
+ {
+  "id": 260,
+  "slug": "computerkurse",
+  "name": "Computerkurse",
+  "parent": 235
+ },
+ {
+  "id": 265,
+  "slug": "esoterik-spirituelles",
+  "name": "Esoterik & Spirituelles",
+  "parent": 235
+ },
+ {
+  "id": 263,
+  "slug": "kochen-backen",
+  "name": "Kochen & Backen",
+  "parent": 235
+ },
+ {
+  "id": 264,
+  "slug": "kunst-gestaltung",
+  "name": "Kunst & Gestaltung",
+  "parent": 235
+ },
+ {
+  "id": 262,
+  "slug": "musik-gesang",
+  "name": "Musik & Gesang",
+  "parent": 235
+ },
+ {
+  "id": 261,
+  "slug": "sportkurse",
+  "name": "Sportkurse",
+  "parent": 235
+ },
+ {
+  "id": 271,
+  "slug": "sprachkurse",
+  "name": "Sprachkurse",
+  "parent": 235
+ },
+ {
+  "id": 267,
+  "slug": "tanzkurse",
+  "name": "Tanzkurse",
+  "parent": 235
+ },
+ {
+  "id": 266,
+  "slug": "weiterbildung",
+  "name": "Weiterbildung",
+  "parent": 235
+ },
+ {
+  "id": 270,
+  "slug": "sonstige",
+  "name": "Weitere Unterricht & Kurse",
+  "parent": 235
+ },
+ {
+  "id": 400,
+  "slug": "nachbarschaftshilfe",
+  "name": "Nachbarschaftshilfe",
+  "parent": null
+ },
+ {
+  "id": 401,
+  "slug": "nachbarschaftshilfe",
+  "name": "Nachbarschaftshilfe",
+  "parent": 400
+ }
+]

@@ -1,0 +1,9 @@
+services:
+  monitor:
+    build: .
+    container_name: kleinanzeigen-monitor
+    restart: unless-stopped
+    ports:
+      - "8080:8080"        # дашборд: http://IP-СЕРВЕРА:8080
+    volumes:
+      - ./data:/app/data   # база и токен here.now переживают пересборки

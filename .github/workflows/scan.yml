@@ -1,0 +1,37 @@
+name: scan
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # каждые 5 минут (GitHub иногда задерживает до ~10)
+  workflow_dispatch: {}      # можно запускать вручную кнопкой
+
+concurrency:
+  group: scan
+  cancel-in-progress: false  # раунды выстраиваются в очередь, не пересекаются
+
+jobs:
+  scan-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Скан + публикация
+        run: python scan_once.py
+        env:
+          HERENOW_SLUG: ${{ secrets.HERENOW_SLUG }}
+          HERENOW_CLAIM: ${{ secrets.HERENOW_CLAIM }}
+
+      - name: Сохранить базу между запусками
+        run: |
+          git config user.name "scan-bot"
+          git config user.email "actions@github.com"
+          git add -f data/ads.db 2>/dev/null || true
+          [ -f data/ads.db-wal ] && git add -f data/ads.db-wal || true
+          if git diff --cached --quiet; then echo "нет изменений"; else
+            git commit -m "db: $(date -u '+%Y-%m-%d %H:%M') UTC"
+            git push
+          fi

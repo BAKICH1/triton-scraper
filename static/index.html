@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Монитор Kleinanzeigen</title>
+<style>
+:root{
+  --bg:#0a0a0c; --panel:#111114; --panel2:#16161a; --raised:#1b1b20;
+  --border:#232329; --border-hi:#38383f;
+  --text:#ededf0; --muted:#909098; --dim:#62626b;
+  --chipbg:#1e1e24; --live:#8fd6ab; --err:#e07a7a; --warn:#d8c37a;
+}
+*{box-sizing:border-box}
+::selection{background:#3a3a42;color:#fff}
+html{scrollbar-color:#2c2c33 #0a0a0c}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 -apple-system,"Segoe UI",Inter,Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+svg.ic{width:12px;height:12px;vertical-align:-1.5px;color:var(--dim);flex:none}
+
+header{position:sticky;top:0;z-index:50;background:rgba(10,10,12,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:0 20px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;min-height:54px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:600;font-size:14.5px;white-space:nowrap}
+.pill{display:inline-flex;align-items:center;gap:7px;background:var(--chipbg);border:1px solid var(--border);border-radius:999px;padding:4px 11px;font-size:11.5px;color:var(--muted);white-space:nowrap}
+.pill b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--dim);flex:none}
+.dot.ok{background:var(--live);box-shadow:0 0 0 3px rgba(143,214,171,.12)}
+.dot.blocked,.dot.error{background:var(--err)}
+.dot.paused{background:var(--warn)}
+.spacer{flex:1}
+button,.btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:9px;padding:7px 13px;font-size:12.5px;cursor:pointer;transition:.16s;font-family:inherit}
+button:hover,.btn:hover{border-color:var(--border-hi);color:var(--text)}
+
+.tabs{display:flex;gap:26px;padding:0 20px;border-bottom:1px solid var(--border)}
+.tab{padding:13px 2px 11px;color:var(--dim);cursor:pointer;font-size:12px;letter-spacing:.8px;text-transform:uppercase;border-bottom:2px solid transparent;transition:.15s;font-weight:600}
+.tab:hover{color:var(--muted)}
+.tab.active{color:var(--text);border-bottom-color:var(--text)}
+.tab .cnt{background:var(--raised);color:var(--text);border-radius:5px;font-size:10.5px;padding:1px 6px;margin-left:7px}
+
+.filters{display:flex;flex-wrap:wrap;gap:8px;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--panel);align-items:center}
+input,select{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:7px 11px;font-size:12.5px;height:35px;font-family:inherit}
+input::placeholder{color:var(--dim)}
+input:focus,select:focus{outline:none;border-color:var(--border-hi);box-shadow:0 0 0 3px rgba(255,255,255,.04)}
+input[type=text]{min-width:170px;flex:1;max-width:none}
+select{appearance:none;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23909098' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;padding-right:28px;cursor:pointer}
+label.chk{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center;height:35px;cursor:pointer;white-space:nowrap}
+input[type=checkbox]{accent-color:#909098;width:14px;height:14px}
+
+main{padding:16px 20px 60px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(236px,1fr));gap:15px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:13px;overflow:hidden;transition:border-color .16s,transform .16s;position:relative;display:flex;flex-direction:column}
+.card:hover{border-color:var(--border-hi);transform:translateY(-2px)}
+.card.new{border-color:#3d3d46}
+.thumb{aspect-ratio:4/3;background:#0d0d10;display:block;overflow:hidden;position:relative}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}
+.card:hover .thumb img{transform:scale(1.03)}
+.body{padding:11px 12px 12px;display:flex;flex-direction:column;gap:7px;flex:1}
+.title{font-weight:550;font-size:13px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:36px}
+.card:hover .title{color:#fff}
+.chip{position:absolute;top:8px;border-radius:6px;font-size:9.5px;font-weight:700;letter-spacing:.8px;padding:3px 7px;z-index:2}
+.chip.new{left:8px;background:#f2f2f5;color:#0a0a0c}
+.chip.pro{right:8px;background:rgba(16,16,19,.82);border:1px solid var(--border-hi);color:#b9b9c2;backdrop-filter:blur(4px)}
+.pr{display:flex;align-items:baseline;gap:7px;margin-top:auto}
+.pval{font-weight:650;font-size:14.5px;color:#fff;font-variant-numeric:tabular-nums}
+.pval.free{color:var(--warn)}
+.pval.none{color:var(--dim);font-weight:400;font-size:11.5px}
+.ptag{font-size:10px;color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:1px 5px;white-space:nowrap}
+.meta{display:flex;flex-wrap:wrap;gap:4px 11px;color:var(--dim);font-size:11px;border-top:1px solid var(--border);padding-top:8px}
+.meta .mi{display:inline-flex;align-items:center;gap:4px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meta .cat{color:var(--muted)}
+
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:15px 17px;margin:0 0 16px}
+.panel h3{margin:0 0 10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chipx{background:var(--chipbg);border:1px solid var(--border);border-radius:999px;padding:4px 6px 4px 12px;font-size:12px;display:inline-flex;align-items:center;gap:7px;color:var(--muted)}
+.chipx b{color:var(--text);font-weight:550}
+.chipx button{border:none;background:none;color:var(--dim);padding:0 4px;font-size:13px;line-height:1}
+.chipx button:hover{color:var(--err)}
+.empty{text-align:center;color:var(--muted);padding:70px 0}
+.empty b{display:block;font-size:15px;color:var(--text);margin-bottom:6px}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:14px;padding:22px;max-width:430px;width:92%}
+dialog::backdrop{background:rgba(0,0,0,.65)}
+label.field{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:11px 0;font-size:12.5px;color:var(--muted)}
+label.field input{width:110px;text-align:right}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid var(--muted);border-top-color:transparent;border-radius:50%;animation:sp 1s linear infinite;vertical-align:-1px}
+@keyframes sp{to{transform:rotate(360deg)}}
+footer{padding:22px 20px;color:var(--dim);font-size:11.5px;text-align:center;border-top:1px solid var(--border);line-height:1.7}
+
+/* ===== Мобильная версия ===== */
+@media(max-width:820px){
+  header{padding:8px 12px;gap:6px 8px;min-height:0}
+  .logo{font-size:13px}
+  .pill{font-size:10.5px;padding:3px 9px;gap:5px}
+  header button{padding:6px 10px;font-size:11.5px}
+  main,.filters,.tabs{padding-left:12px;padding-right:12px}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+  .card{border-radius:11px}
+  .body{padding:9px 10px 10px;gap:5px}
+  .pval{font-size:13px}
+  .meta{gap:3px 8px;font-size:10.5px;padding-top:6px}
+  footer{padding:16px 12px}
+}
+@media(max-width:380px){
+  .grid{grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="10.5" cy="10.5" r="6.5" stroke="#ededf0" stroke-width="1.8"/><path d="M15.6 15.6 L20.5 20.5" stroke="#ededf0" stroke-width="1.8" stroke-linecap="round"/></svg>
+    Монитор <span style="color:var(--dim);font-weight:400;font-size:12px">Kleinanzeigen</span>
+  </div>
+  <span class="pill"><span class="dot" id="dot"></span><span id="statusTxt">запуск…</span></span>
+  <span class="pill" id="lastScan">—</span>
+  <span class="pill">всего: <b id="cntTotal">0</b></span>
+  <span class="pill">за 24 ч: <b id="cnt24">0</b></span>
+  <span class="pill" id="newBadge" style="display:none;border-color:var(--border-hi);color:var(--text)">новых: <b id="cntNew">0</b></span>
+  <span class="spacer"></span>
+  <button id="btnScan">Сканировать</button>
+  <button id="btnPause">Пауза</button>
+  <button id="btnSound">Звук: вкл</button>
+  <button id="btnSettings">Настройки</button>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="feed">Лента</div>
+  <div class="tab" data-tab="watches">Совпадения <span class="cnt" id="watchCnt" style="display:none">0</span></div>
+</div>
+
+<div class="filters">
+  <input type="text" id="fq" placeholder="Поиск по названию, описанию, городу…">
+  <select id="fcat"><option value="">Все категории</option></select>
+  <select id="fseller">
+    <option value="">Все продавцы</option>
+    <option value="priv">Частные</option>
+    <option value="pro">Магазины (PRO)</option>
+  </select>
+  <input type="text" id="fmin" placeholder="€ от" style="width:80px">
+  <input type="text" id="fmax" placeholder="€ до" style="width:80px">
+  <select id="fsort">
+    <option value="first_seen">Сначала новые</option>
+    <option value="posted_at">По дате объявления</option>
+  </select>
+  <label class="chk"><input type="checkbox" id="ffree"> бесплатные</label>
+  <button id="btnReset">Сброс</button>
+  <a class="btn" id="btnCsv" href="/api/export.csv">CSV</a>
+</div>
+
+<main>
+  <div class="panel" id="watchPanel" style="display:none">
+    <h3>Ключевые слова — поиск и уведомления</h3>
+    <div class="chips" id="watchChips"></div>
+    <div style="display:flex;gap:8px;margin-top:11px">
+      <input type="text" id="watchInput" placeholder="Например: iphone 15, e-bike, PS5…" style="flex:1">
+      <button id="btnAddWatch" style="border-color:var(--border-hi);color:var(--text)">+ Добавить</button>
+    </div>
+    <div style="color:var(--dim);font-size:11.5px;margin-top:9px">Каждое слово опрашивается отдельным поиском Kleinanzeigen (сортировка «Neueste»), плюс совпадения ищутся во всей ленте. При новом совпадении — звук и счётчик.</div>
+  </div>
+
+  <div class="panel" id="sourcesPanel">
+    <h3>Источники мониторинга</h3>
+    <div class="chips" id="srcChips"></div>
+    <div style="display:flex;gap:8px;margin-top:11px;flex-wrap:wrap">
+      <select id="srcCat" style="flex:1;min-width:220px"></select>
+      <button id="btnAddCat">+ Категорию</button>
+    </div>
+    <div style="color:var(--dim);font-size:11.5px;margin-top:9px">«Вся Германия» — глобальная лента всех новых объявлений сайта. Можно добавить отдельные категории для более глубокой проверки.</div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none"><b>Объявлений нет</b>Монитор делает обход — это займёт до минуты.</div>
+</main>
+
+<dialog id="dlg">
+  <h3 style="margin:0 0 8px;font-size:15px">Настройки мониторинга</h3>
+  <label class="field">Интервал сканирования, сек <input type="text" id="sInterval"></label>
+  <label class="field">Глубина глобальной ленты, стр. <input type="text" id="sPages"></label>
+  <label class="field">Пауза между запросами, сек <input type="text" id="sDelay"></label>
+  <label class="field">Хранить объявления, дней <input type="text" id="sKeep"></label>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+    <button id="dlgClose">Отмена</button>
+    <button id="dlgSave" style="border-color:var(--border-hi);color:var(--text)">Сохранить</button>
+  </div>
+</dialog>
+
+<footer>
+  Данные: kleinanzeigen.de · парсинг публичной ленты для личного мониторинга · счётчик лайков сайт не отдаёт публично,
+  просмотры обновляются бережно (раз в несколько часов на объявление) · проект не связан с Kleinanzeigen / Adevinta.
+</footer>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const ICO={
+  pin:'<path d="M12 21s-7-5.2-7-11a7 7 0 1 1 14 0c0 5.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/>',
+  clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  cam:'<rect x="3.5" y="7" width="17" height="12.5" rx="2.5"/><path d="M8.5 7l1.6-2.5h3.8L15.5 7"/><circle cx="12" cy="13" r="3.2"/>',
+  eye:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>'
+};
+const ico=n=>`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICO[n]}</svg>`;
+const PH="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="120" height="90"><rect width="100%" height="100%" fill="#141418"/><path d="M45 58c6 5 24 5 30 0l-4-14c-3-6-19-6-22 0z" fill="#232329"/><circle cx="60" cy="44" r="7" fill="#232329"/></svg>`);
+let tab="feed", cats=[], sound=localStorage.getItem("kl_sound")!=="off", seen=new Set(JSON.parse(localStorage.getItem("kl_seen")||"[]")), pendingNew=0, lastStats="";
+
+function relTime(iso){ if(!iso) return "";
+  const d=new Date(iso), s=(Date.now()-d.getTime())/1000;
+  if(s<60) return "только что";
+  if(s<3600) return Math.floor(s/60)+" мин";
+  if(s<86400) return Math.floor(s/3600)+" ч";
+  return Math.floor(s/86400)+" дн";
+}
+function relNext(ts){ if(!ts) return "—"; const s=ts-Date.now()/1000; return s<=0?"скоро":(s<90?Math.round(s)+" с":Math.round(s/60)+" мин"); }
+function esc(s){ return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function beep(){ if(!sound) return; try{ const ctx=beep.ctx||(beep.ctx=new (window.AudioContext||window.webkitAudioContext)());
+  const o=ctx.createOscillator(),g=ctx.createGain(); o.connect(g);g.connect(ctx.destination);
+  o.frequency.value=760; g.gain.setValueAtTime(.001,ctx.currentTime); g.gain.exponentialRampToValueAtTime(.12,ctx.currentTime+.02);
+  g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.25); o.start(); o.stop(ctx.currentTime+.27);}catch(e){} }
+function markSeen(ids){ for(const i of ids) seen.add(i); const arr=[...seen]; localStorage.setItem("kl_seen",JSON.stringify(arr.slice(-4000))); }
+function priceHtml(a){
+  if(a.price_eur===0) return '<div class="pr"><span class="pval free">Бесплатно</span></div>';
+  if(a.price_eur==null){ const t=a.price_text&&a.price_text!=="—"?esc(a.price_text)+" · ":""; return `<div class="pr"><span class="pval none">${t}цена не указана</span></div>`; }
+  return `<div class="pr"><span class="pval">${a.price_eur.toLocaleString("ru-RU")} €</span>${a.negotiable?'<span class="ptag">VB · торг</span>':""}</div>`;
+}
+function card(a){
+  const isNew=!seen.has(a.id);
+  const cat=(cats.find(c=>c.id===a.category_id)||{}).name||"";
+  const t=relTime(a.posted_at);
+  return `<article class="card${isNew?" new":""}">
+    <a class="thumb" href="${a.url}" target="_blank" rel="noopener">
+      ${isNew?'<span class="chip new">NEW</span>':""}${a.is_pro?'<span class="chip pro">PRO</span>':""}
+      ${a.img_proxy?`<img loading="lazy" src="${a.img_proxy}" onerror="this.src='${PH}'">`:`<img src="${PH}">`}
+    </a>
+    <div class="body">
+      <a class="title" href="${a.url}" target="_blank" rel="noopener">${esc(a.title)}</a>
+      ${priceHtml(a)}
+      <div class="meta">
+        ${cat?`<span class="mi cat">${esc(cat)}</span>`:""}
+        <span class="mi">${ico("clock")}${esc(t)}</span>
+        ${a.location?`<span class="mi">${ico("pin")}${esc(a.location)}</span>`:""}
+        ${a.img_count?`<span class="mi">${ico("cam")}${a.img_count}</span>`:""}
+        ${a.views!=null?`<span class="mi">${ico("eye")}${a.views}</span>`:""}
+      </div>
+    </div></article>`;
+}
+
+async function loadAds(){
+  const p=new URLSearchParams();
+  p.set("q",$("fq").value); p.set("order",$("fsort").value);
+  if($("fcat").value) p.set("category",$("fcat").value);
+  if($("fmin").value) p.set("min",$("fmin").value);
+  if($("fmax").value) p.set("max",$("fmax").value);
+  if($("ffree").checked) p.set("free","1");
+  if($("fseller").value==="priv") p.set("pro","0");
+  if($("fseller").value==="pro") p.set("pro","1");
+  if(tab==="watches") p.set("watches","1");
+  p.set("limit","180");
+  const r=await fetch("/api/ads?"+p), j=await r.json();
+  const fresh=(j.ads||[]).filter(a=>!seen.has(a.id));
+  if(fresh.length && seen.size>0){ pendingNew+=fresh.length; beep(); }
+  markSeen((j.ads||[]).map(a=>a.id));
+  $("grid").innerHTML=(j.ads||[]).map(card).join("")||"";
+  $("empty").style.display=(j.ads||[]).length?"none":"block";
+  $("cntNew").textContent=pendingNew; $("newBadge").style.display=pendingNew?"inline-flex":"none";
+  document.title=(pendingNew?`(${pendingNew}) `:"")+"Монитор Kleinanzeigen";
+}
+async function loadStats(){
+  const r=await fetch("/api/stats"), j=await r.json();
+  lastStats=j; const m=j.monitor||{};
+  const st=m.status||"…";
+  $("dot").className="dot "+(st==="ok"?"ok":st==="blocked"||st==="error"?"blocked":st==="paused"?"paused":"");
+  $("statusTxt").textContent=st==="ok"?"активен":st==="blocked"?"IP временно ограничен — ждём":st==="paused"?"на паузе":st==="error"?"ошибка":st;
+  $("lastScan").innerHTML=m.last_scan_at?`скан: ${relTime(m.last_scan_at)} · новых: <b>${m.new_in_last_scan}</b> · след. через ${relNext(m.next_scan_at)}`:"первый обход…";
+  $("cntTotal").textContent=j.total; $("cnt24").textContent=j.last24;
+  $("btnPause").textContent=m.status==="paused"?"▶ Продолжить":"Пауза";
+}
+async function loadSources(){
+  const [s1,s2]=await Promise.all([fetch("/api/sources").then(r=>r.json()),fetch("/api/watches").then(r=>r.json())]);
+  $("srcChips").innerHTML=s1.map(s=>`<span class="chipx">${s.type==="global"?"глобальная лента":s.type==="category"?"категория":"поиск"}: <b>${esc(s.label||s.value)}</b>${s.type!=="global"?`<button data-sid="${s.id}" title="Удалить">✕</button>`:""}</span>`).join("");
+  $("srcChips").querySelectorAll("button[data-sid]").forEach(b=>b.onclick=async()=>{await fetch("/api/sources/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:+b.dataset.sid})});loadSources();loadAds();});
+  const w=s2;
+  $("watchChips").innerHTML=w.length?w.map(s=>`<span class="chipx"><b>${esc(s.value)}</b><button data-wid="${s.id}">✕</button></span>`).join(""):`<span style="color:var(--dim);font-size:12px">Пока нет ключевых слов</span>`;
+  $("watchChips").querySelectorAll("button[data-wid]").forEach(b=>b.onclick=async()=>{await fetch("/api/watches/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:+b.dataset.wid})});loadSources();setTimeout(loadAds,300);});
+  $("watchCnt").style.display=w.length?"inline":"none";
+  $("watchCnt").textContent=w.length;
+}
+function loadCategories(){
+  fetch("/api/categories").then(r=>r.json()).then(list=>{
+    cats=list; const kids={};
+    list.forEach(c=>{ if(c.parent!==null){(kids[c.parent]=kids[c.parent]||[]).push(c);} });
+    let html='<option value="">Все категории</option>';
+    for(const t of list.filter(c=>c.parent===null)){
+      html+=`<optgroup label="${esc(t.name)}"><option value="${t.id}">${esc(t.name)} — все</option>`;
+      (kids[t.id]||[]).forEach(k=>html+=`<option value="${k.id}">${esc(k.name)}</option>`); html+="</optgroup>";
+    }
+    $("fcat").innerHTML=html;
+    $("srcCat").innerHTML='<option value="">— выберите категорию —</option>'+html.split("</option>").slice(1).join("</option>");
+  });
+}
+$("btnAddWatch").onclick=async()=>{
+  const v=$("watchInput").value.trim(); if(!v) return;
+  await fetch("/api/watches",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({keyword:v})});
+  $("watchInput").value=""; loadSources(); setTimeout(loadAds,300);
+};
+$("watchInput").onkeydown=e=>{if(e.key==="Enter")$("btnAddWatch").click();};
+$("btnAddCat").onclick=async()=>{
+  const v=$("srcCat").value; if(!v) return;
+  await fetch("/api/sources",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:"category",cat_id:+v})});
+  loadSources();
+};
+$("btnScan").onclick=()=>{ $("btnScan").innerHTML='<span class="spin"></span> Сканирую…'; fetch("/api/scan",{method:"POST"}); setTimeout(()=>{loadStats();loadAds();$("btnScan").textContent="Сканировать";},8000); };
+$("btnPause").onclick=async()=>{ await fetch("/api/pause",{method:"POST"}); setTimeout(loadStats,300); };
+$("btnSound").onclick=()=>{ sound=!sound; localStorage.setItem("kl_sound",sound?"on":"off"); $("btnSound").textContent=sound?"Звук: вкл":"Звук: выкл"; if(sound)beep(); };
+$("btnReset").onclick=()=>{ $("fq").value="";$("fcat").value="";$("fmin").value="";$("fmax").value="";$("ffree").checked=false;$("fseller").value="";loadAds(); };
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active")); t.classList.add("active");
+  tab=t.dataset.tab; $("watchPanel").style.display=tab==="watches"?"block":"none"; loadAds();
+});
+["fq","fcat","fmin","fmax","ffree","fseller","fsort"].forEach(id=>{ $(id).oninput=debounce(loadAds,350); $(id).onchange=debounce(loadAds,50); });
+function debounce(f,ms){ let t; return(...a)=>{clearTimeout(t);t=setTimeout(()=>f(...a),ms);}; }
+$("newBadge").onclick=()=>{ pendingNew=0; $("cntNew").textContent=0; $("newBadge").style.display="none"; document.title="Монитор Kleinanzeigen"; };
+$("btnSettings").onclick=()=>{ const m=(lastStats.monitor||{}).cfg||{};
+  $("sInterval").value=m.scan_interval_sec||60; $("sPages").value=m.global_pages||3; $("sDelay").value=m.request_delay_sec||4; $("sKeep").value=m.retention_days||21; $("dlg").showModal(); };
+$("dlgClose").onclick=()=>$("dlg").close();
+$("dlgSave").onclick=async()=>{ await fetch("/api/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({scan_interval_sec:+$("sInterval").value||60,global_pages:+$("sPages").value||3,request_delay_sec:+$("sDelay").value||4,retention_days:+$("sKeep").value||21})}); $("dlg").close(); loadStats(); };
+if(!sound) $("btnSound").textContent="Звук: выкл";
+loadCategories(); loadSources(); loadStats(); loadAds();
+setInterval(()=>{loadStats();loadAds();},15000);
+</script>
+</body>
+</html>
