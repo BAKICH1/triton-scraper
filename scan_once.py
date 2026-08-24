@@ -134,18 +134,18 @@ def main() -> int:
         tg = telegram_bot.start_polling()
     except Exception as e:
         print("tg: не запустился (не критично):", e)
+    # обогащение саморегов — потоком на всё время цикла (скан+публикация+хвост)
+    import threading
+    stop_enr = threading.Event()
+    enr = threading.Thread(target=lambda: enrich_member_since(stop=stop_enr),
+                           daemon=True, name="enrich")
+    enr.start()
     mon._scan_round()
     print("скан:", mon.last_scan_at, "| найдено/новых за раунд:", mon.new_in_last_scan,
           "| статус:", mon.status,
           ("| ошибка: " + mon.last_error) if mon.last_error else "")
     # публикуем СРАЗУ после скана — свежие объявления на сайте на минуту раньше;
     # даты саморегов догонят следующим циклом (окно фильтра — 2 дня)
-    # обогащение саморегов — потоком, параллельно публикации и TG-хвосту
-    import threading
-    stop_enr = threading.Event()
-    enr = threading.Thread(target=lambda: enrich_member_since(stop=stop_enr),
-                           daemon=True, name="enrich")
-    enr.start()
     ok = publish.republish()
     # хвост: бот продолжает отвечать, пока стартует следующий раннер
     try:
