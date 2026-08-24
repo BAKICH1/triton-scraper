@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23131316'/%3E%3Cpath d='M12 5.5v13M7 5.5v5a5 5 0 0 0 10 0v-5' stroke='%23ffffff' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
-<title>Монитор Kleinanzeigen</title>
+<title>Triton Scraper — монитор Kleinanzeigen</title>
 <style>
 :root{
   --bg:#ffffff; --panel:#ffffff; --panel2:#f7f7f8; --raised:#f1f1f3;
@@ -173,7 +173,7 @@ footer a{color:var(--muted);border-bottom:1px solid var(--border)}
 <header>
   <div class="logo">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v17M6 3.5v6.5a6 6 0 0 0 12 0V3.5"/></svg>
-    Монитор <span class="sub">Kleinanzeigen</span>
+    Triton Scraper <span class="sub">Kleinanzeigen</span>
   </div>
   <span class="pill"><span class="dot snap" id="dot"></span><span id="mode">данные от __STAMP__</span></span>
   <span class="pill newbadge" id="newBadge" role="button">новых: <b id="cntNew">0</b></span>
@@ -225,7 +225,7 @@ footer a{color:var(--muted);border-bottom:1px solid var(--border)}
   <div class="empty" id="empty" style="display:none"><b style="display:block">Ничего не найдено</b>Измените фильтры или нажмите «Обновить».</div>
 </main>
 
-<footer>Данные: kleinanzeigen.de · лента обновляется каждые ~2 мин, страница сама подхватывает новое · просмотры обновляются бережно · проект для личного мониторинга</footer>
+<footer>Triton Scraper · данные: kleinanzeigen.de · лента обновляется каждые ~2 мин, страница сама подхватывает новое · просмотры обновляются бережно · проект для личного мониторинга</footer>
 
 <script>
 "use strict";
@@ -591,7 +591,7 @@ function updTitle(){
   $("newBadge").className="pill newbadge"+(pendingNew?" show":"");
   $("cntSelf").textContent=pendingSelf;
   $("selfBadge").className="pill selfbadge"+(pendingSelf?" show":"");
-  document.title=((pendingNew||pendingSelf)?"("+(pendingNew+pendingSelf)+") ":"")+"Монитор Kleinanzeigen";
+  document.title=((pendingNew||pendingSelf)?"("+(pendingNew+pendingSelf)+") ":"")+"Triton Scraper";
 }
 
 /* ===== Категории ===== */
