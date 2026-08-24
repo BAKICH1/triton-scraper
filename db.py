@@ -68,7 +68,8 @@ def init():
     for ddl in ("ALTER TABLE ads ADD COLUMN views INTEGER",
                 "ALTER TABLE ads ADD COLUMN views_at TEXT",
                 "ALTER TABLE ads ADD COLUMN views_prev INTEGER",
-                "ALTER TABLE ads ADD COLUMN views_prev_at TEXT"):
+                "ALTER TABLE ads ADD COLUMN views_prev_at TEXT",
+                "ALTER TABLE ads ADD COLUMN is_top INTEGER DEFAULT 0"):
         try:
             _conn.execute(ddl)
         except sqlite3.OperationalError:
@@ -91,16 +92,17 @@ def upsert_ads(ads, source="global"):
         for a in ads:
             try:
                 _conn.execute("""INSERT INTO ads(id,title,descr,price_text,price_eur,negotiable,location,
-                    date_text,posted_at,category_id,is_pro,img_count,url,img,first_seen,source)
-                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    date_text,posted_at,category_id,is_pro,img_count,url,img,first_seen,source,is_top)
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                     (a["id"], a["title"], a["descr"], a["price_text"], a["price_eur"], a["negotiable"],
                      a["location"], a["date_text"], a["posted_at"], a["category_id"], a["is_pro"],
-                     a["img_count"], a["url"], a["img"], now, source))
+                     a["img_count"], a["url"], a["img"], now, source, a.get("is_top", 0)))
                 new_ids.append(a["id"])
             except sqlite3.IntegrityError:
                 # уже видели: обновляем только цену/заголовок (могли измениться)
-                _conn.execute("UPDATE ads SET title=?, price_text=?, price_eur=?, img=? WHERE id=?",
-                              (a["title"], a["price_text"], a["price_eur"], a["img"], a["id"]))
+                _conn.execute("UPDATE ads SET title=?, price_text=?, price_eur=?, img=?, is_top=? WHERE id=?",
+                              (a["title"], a["price_text"], a["price_eur"], a["img"],
+                               a.get("is_top", 0), a["id"]))
         _conn.commit()
     return len(new_ids), new_ids
 
