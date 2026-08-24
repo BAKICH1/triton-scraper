@@ -103,6 +103,13 @@ def main() -> int:
         if fb:
             db.save_categories(fb)
     mon = monitor.Monitor()          # поток не запускаем — нужен только один раунд
+    # бета: телеграм-бот опрашивает команды всё время, пока жив раннер
+    tg = None
+    try:
+        import telegram_bot
+        tg = telegram_bot.start_polling()
+    except Exception as e:
+        print("tg: не запустился (не критично):", e)
     mon._scan_round()
     print("скан:", mon.last_scan_at, "| найдено/новых за раунд:", mon.new_in_last_scan,
           "| статус:", mon.status,
@@ -111,12 +118,12 @@ def main() -> int:
     # даты саморегов догонят следующим циклом (окно фильтра — 2 дня)
     ok = publish.republish()
     enrich_member_since()
-    # бета: телеграм-бот — забрать команды и ответить карточками
+    # хвост: бот продолжает отвечать, пока стартует следующий раннер
     try:
         import telegram_bot
-        telegram_bot.process_updates()
-    except Exception as e:
-        print("tg: сбой (не критично):", e)
+        telegram_bot.tail(tg, int(os.environ.get("TG_TAIL", "40")))
+    except Exception:
+        pass
     # сжать WAL в основной файл — чтобы кэш/копия базы были полными
     try:
         import sqlite3
