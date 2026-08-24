@@ -122,6 +122,11 @@ def collect_ads(limit=500, board_cats=(161, 80, 153, 192), board_hours=6, board_
 def build():
     ads, total, cat_rows = collect_ads(limit=2600)
     html_tpl = open(TEMPLATE, encoding="utf-8").read()
+    tg_name = ""
+    try:
+        tg_name = db.kv_get("tg_bot_name", "") or ""
+    except Exception:
+        pass
     tpl_hash = hashlib.md5(html_tpl.encode("utf-8")).hexdigest()[:8]
     stamp = datetime.now(timezone.utc)
     version = f"v{int(stamp.timestamp())}.{total}"
@@ -135,13 +140,14 @@ def build():
 
     # index.html перезаливаем при смене шаблона ИЛИ числа категорий
     # (категории зашиты в index) — данные живут в ads.json
-    sig = f"{tpl_hash}:{len(cat_rows)}"
+    sig = f"{tpl_hash}:{len(cat_rows)}:{tg_name}"
     try:
         state = json.load(open(STATE_FILE, encoding="utf-8"))
     except Exception:
         state = {}
     if state.get("sig") != sig or not os.path.exists(OUT):
         html = (html_tpl
+                .replace("__TGBOT__", tg_name)
                 .replace("/*__ADS__*/[]", json.dumps(ads[:150], ensure_ascii=False))
                 .replace("/*__CATS__*/[]", json.dumps(cat_rows, ensure_ascii=False))
                 .replace("__TOTAL__", str(total))
