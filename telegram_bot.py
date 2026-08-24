@@ -18,6 +18,7 @@ import db
 import publish
 
 API = "https://api.telegram.org/bot{token}/{method}"
+UA_HDR = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 
 ID_RE = re.compile(r"(?:/start\s+|/ad\s+)?(?:https?://www\.kleinanzeigen\.de/s-anzeige/[^\s]*?/)?(\d{6,12})(?:[^\d].*)?$")
 
@@ -32,6 +33,34 @@ def _call(token, method, **params):
     except Exception as e:
         print(f"  tg:{method} → {type(e).__name__} {e}")
         return {}
+
+
+IMG_RE = re.compile(r'https://img\.kleinanzeigen\.de/api/v1/prod-ads/images/[0-9a-f]{2}/([0-9a-f-]{36})')
+
+
+def _fetch(url):
+    """Страница объявления: напрямую, при неудаче — через публичный прокси."""
+    import urllib.error, urllib.parse
+    for target in (url, "https://api.allorigins.win/raw?url=" + urllib.parse.quote(url, safe="")):
+        try:
+            req = urllib.request.Request(target, headers={"User-Agent": UA_HDR})
+            with urllib.request.urlopen(req, timeout=20) as r:
+                return r.read().decode("utf-8", "replace")
+        except Exception:
+            continue
+    return ""
+
+
+def _gallery(page_html, fallback_img):
+    """Все фото объявления в порядке галереи, правило $_59 — максимум качества."""
+    seen, out = set(), []
+    for uuid in IMG_RE.findall(page_html):
+        if uuid not in seen:
+            seen.add(uuid)
+            out.append(f"https://img.kleinanzeigen.de/api/v1/prod-ads/images/{uuid[:2]}/{uuid}?rule=$_59.JPG")
+    if not out and fallback_img:
+        out = [fallback_img]
+    return out[:10]
 
 
 def _ad_row(ad_id):
@@ -123,8 +152,18 @@ def _send_card(token, chat_id, ad_id):
         return
     text = _caption(a)
     kb = {"inline_keyboard": [[{"text": "Открыть на Kleinanzeigen", "url": a["url"]}]]}
-    if a.get("img"):
-        r = _call(token, "sendPhoto", chat_id=chat_id, photo=a["img"],
+    imgs = _gallery(_fetch(a["url"]), a.get("img"))
+    if len(imgs) > 1:
+        media = [{"type": "photo", "media": imgs[0], "caption": text, "parse_mode": "HTML"}]
+        media += [{"type": "photo", "media": u} for u in imgs[1:]]
+        r = _call(token, "sendMediaGroup", chat_id=chat_id, media=media)
+        if r.get("ok"):
+            _call(token, "sendMessage", chat_id=chat_id,
+                  text="⬆️ " + str(len(imgs)) + " фото · объявление целиком 👇",
+                  reply_markup=kb)
+            return
+    if imgs:
+        r = _call(token, "sendPhoto", chat_id=chat_id, photo=imgs[0],
                   caption=text, parse_mode="HTML", reply_markup=kb)
         if r.get("ok"):
             return
@@ -137,34 +176,85 @@ HELP = ("Пришли <b>id</b> или <b>ссылку</b> объявления 
         "Кнопка «TG» на карточках сайта ведёт сюда автоматически.\n\n📡 Triton Scraper · бета")
 
 
+def _handle(token, u):
+    msg = u.get("message") or {}
+    chat = msg.get("chat", {}).get("id")
+    if not chat:
+        return
+    text = (msg.get("text") or "").strip()
+    m = ID_RE.match(text)
+    if m:
+        _send_card(token, chat, m.group(1))
+    else:
+        _call(token, "sendMessage", chat_id=chat, text=HELP, parse_mode="HTML")
+
+
 def process_updates():
-    """Забрать и отработать накопившиеся команды. Вызывается каждый цикл сканера."""
+    """Разовая обработка накопившегося (для локального запуска/тестов)."""
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
     if not token:
         return
-    # имя бота для кнопок на сайте (однократно)
-    if not db.kv_get("tg_bot_name"):
-        me = _call(token, "getMe")
-        if me.get("ok") and me.get("result", {}).get("username"):
-            db.kv_set("tg_bot_name", me["result"]["username"])
-            print(f"  tg: бот @{me['result']['username']} на связи")
-            db.kv_set("tg_need_rebuild", "1")
+    _register(token)
     off = int(db.kv_get("tg_offset", 0) or 0)
     r = _call(token, "getUpdates", offset=off, timeout=0, limit=30)
     if not r.get("ok"):
         return
     for u in r.get("result", []):
         off = max(off, u["update_id"] + 1)
-        msg = u.get("message") or {}
-        chat = msg.get("chat", {}).get("id")
-        if not chat:
-            continue
-        text = (msg.get("text") or "").strip()
-        m = ID_RE.match(text)
-        if m:
-            _send_card(token, chat, m.group(1))
-        else:
-            _call(token, "sendMessage", chat_id=chat, text=HELP, parse_mode="HTML")
-    db.kv_set("tg_offset", off)
-    if r["result"]:
-        print(f"  tg: обработано {len(r['result'])} команд")
+        _handle(token, u)
+        db.kv_set("tg_offset", off)
+
+
+def _register(token):
+    """Имя бота для кнопок сайта (однократно)."""
+    if not db.kv_get("tg_bot_name"):
+        me = _call(token, "getMe")
+        if me.get("ok") and me.get("result", {}).get("username"):
+            db.kv_set("tg_bot_name", me["result"]["username"])
+            print(f"  tg: бот @{me['result']['username']} на связи")
+
+
+def start_polling():
+    """Живой long-poll поток на всё время работы раннера: ответ за секунды.
+
+    Telegram держит один getUpdates-консьюмер, поэтому бот опрашивает
+    только этим потоком; оффсет сохраняется после каждой команды.
+    """
+    import threading, time
+    token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+    if not token:
+        return None
+    _register(token)
+    st = {"stop": False, "n": 0}
+
+    def loop():
+        off = int(db.kv_get("tg_offset", 0) or 0)
+        while not st["stop"]:
+            r = _call(token, "getUpdates", offset=off, timeout=25, limit=10)
+            if not r.get("ok"):
+                time.sleep(2)
+                continue
+            for u in r.get("result", []):
+                off = max(off, u["update_id"] + 1)
+                try:
+                    _handle(token, u)
+                    st["n"] += 1
+                except Exception as e:
+                    print("  tg: ошибка обработки:", e)
+                db.kv_set("tg_offset", off)
+
+    t = threading.Thread(target=loop, daemon=True, name="tg-poll")
+    t.start()
+    return st
+
+
+def tail(st, seconds=40):
+    """Держим процесс живым — бот продолжает отвечать, пока раннер не сменится."""
+    import time
+    if not st:
+        return
+    t0 = time.monotonic()
+    while time.monotonic() - t0 < seconds and not st["stop"]:
+        time.sleep(1)
+    if st["n"]:
+        print(f"  tg: за цикл отвечено {st['n']} раз")
