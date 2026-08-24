@@ -15,8 +15,8 @@ import publish
 import scraper
 
 
-def enrich_member_since(limit: int = 45, delay: float = 1.6, window_h: int = 36,
-                        workers: int = 3) -> int:
+def enrich_member_since(limit: int = 28, delay: float = 1.5, window_h: int = 36,
+                        workers: int = 1) -> int:
     """Добирает дату регистрации аккаунта продавца со страниц объявлений.
 
     NULL — ещё не пробовали, '' — пробовали, маркера нет (не ретраим),
