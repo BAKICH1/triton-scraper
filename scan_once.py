@@ -15,18 +15,24 @@ import publish
 import scraper
 
 
-def enrich_member_since(limit: int = 28, delay: float = 1.5, window_h: int = 36,
-                        workers: int = 1) -> int:
+def _fetch_via_proxy(url: str) -> str:
+    """Страница объявления через публичный прокси (другой IP — обход лимитов CI)."""
+    import urllib.parse
+    u = "https://api.allorigins.win/raw?url=" + urllib.parse.quote(url, safe="")
+    req = urllib.request.Request(u, headers={"User-Agent": scraper.DEFAULT_UA})
+    with urllib.request.urlopen(req, timeout=25) as r:
+        return r.read().decode("utf-8", "replace")
+
+
+def enrich_member_since(limit: int = 28, delay: float = 1.5, window_h: int = 36) -> int:
     """Добирает дату регистрации аккаунта продавца со страниц объявлений.
 
     NULL — ещё не пробовали, '' — пробовали, маркера нет (не ретраим),
-    ISO-дата — успешно. Приоритет: самые свежие объявления (окно window_h),
-    чтобы фильтр «самореги» работал для всего нового потока.
-    Потоки с личным темпом запросов; при блокировке 403/429 — мягкий стоп.
+    ISO-дата — успешно. Приоритет: самые свежие объявления (окно window_h).
+    Маршрут: напрямую, а при блокировке IP — через публичный прокси.
     """
     import sqlite3
     import urllib.error
-    from concurrent.futures import ThreadPoolExecutor
     from datetime import datetime, timezone, timedelta
 
     conn = sqlite3.connect(db.DB_PATH)
@@ -38,30 +44,37 @@ def enrich_member_since(limit: int = 28, delay: float = 1.5, window_h: int = 36,
         conn.close()
         return 0
 
-    stop = {"flag": False}
+    direct_ok = {"flag": True}
+    f = scraper.Fetcher(min_delay=delay, timeout=15)
+    fp = scraper.Fetcher(min_delay=1.0, timeout=25)   # темп для прокси-маршрута
     results = {}
 
-    def work(slice_):
-        f = scraper.Fetcher(min_delay=delay, timeout=15)
-        for ad_id, url in slice_:
-            if stop["flag"]:
-                return
+    for ad_id, url in rows:
+        html = None
+        if direct_ok["flag"]:
             try:
                 html = f.get(url)
-            except scraper.BlockedError:      # 403/429 — притормозим до следующего цикла
-                stop["flag"] = True
-                return
+            except scraper.BlockedError:
+                direct_ok["flag"] = False   # IP прикрыли — остальное через прокси
             except urllib.error.HTTPError as e:
-                if e.code in (404, 410):      # объявление исчезло — больше не трогаем
+                if e.code in (404, 410):
                     results[ad_id] = ""
-                continue                      # прочие коды — ретрай в следующий цикл
+                    continue
             except Exception:
-                continue
-            results[ad_id] = scraper.parse_member_since(html) or ""
-
-    slices = [rows[i::workers] for i in range(workers)]
-    with ThreadPoolExecutor(max_workers=workers) as ex:
-        list(ex.map(work, slices))
+                pass
+        if html is None:
+            try:
+                import urllib.parse
+                proxied = ("https://api.allorigins.win/raw?url="
+                           + urllib.parse.quote(url, safe=""))
+                html = fp.get(proxied)
+            except urllib.error.HTTPError as e:
+                if e.code in (404, 410):
+                    results[ad_id] = ""
+                    continue
+            except Exception:
+                continue                     # ретрай в следующий цикл
+        results[ad_id] = scraper.parse_member_since(html) or ""
 
     got = 0
     with conn:
@@ -70,7 +83,8 @@ def enrich_member_since(limit: int = 28, delay: float = 1.5, window_h: int = 36,
             if ms:
                 got += 1
     conn.close()
-    print(f"самореги: обогащено {got} из {len(rows)} очереди")
+    route = "прямо+прокси" if not direct_ok["flag"] else "напрямую"
+    print(f"самореги: обогащено {got} из {len(rows)} очереди ({route})")
     return got
 
 
