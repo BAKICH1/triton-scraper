@@ -77,7 +77,7 @@ def collect_ads(limit=500, board_cats=(161, 80, 153, 192), board_hours=6, board_
     cat_rows = [dict(r) for r in conn.execute(
         "SELECT id,slug,name,parent FROM categories ORDER BY parent NULLS FIRST, id")]
     cols = """id,title,descr,price_text,price_eur,negotiable,location,date_text,
-                  posted_at,category_id,is_pro,img_count,url,img,first_seen,
+                  posted_at,category_id,is_pro,is_top,img_count,url,img,first_seen,
                   views,views_prev,views_at,views_prev_at"""
     rows = conn.execute(
         f"""SELECT {cols} FROM ads ORDER BY first_seen DESC LIMIT ?""", (limit,)).fetchall()
