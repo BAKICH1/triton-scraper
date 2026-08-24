@@ -111,6 +111,12 @@ def main() -> int:
     # даты саморегов догонят следующим циклом (окно фильтра — 2 дня)
     ok = publish.republish()
     enrich_member_since()
+    # бета: телеграм-бот — забрать команды и ответить карточками
+    try:
+        import telegram_bot
+        telegram_bot.process_updates()
+    except Exception as e:
+        print("tg: сбой (не критично):", e)
     # сжать WAL в основной файл — чтобы кэш/копия базы были полными
     try:
         import sqlite3
