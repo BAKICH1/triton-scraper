@@ -79,6 +79,25 @@ class Fetcher:
             self._last = time.monotonic()
 
 
+def parse_member_since(html_text: str) -> str | None:
+    """Дата регистрации аккаунта продавца со страницы объявления.
+
+    Маркер: <span class="userprofile-vip-details-text">Aktiv seit DD.MM.YYYY</span>
+    Возвращает ISO-дату (YYYY-MM-DD) или None, если страницы/маркера нет.
+    """
+    m = re.search(r'Aktiv\s+seit\s+(\d{2})\.(\d{2})\.(\d{4})', html_text)
+    if not m:
+        m = re.search(r'Mitglied\s+seit\s+(\d{2})\.(\d{2})\.(\d{4})', html_text)
+    if not m:
+        return None
+    d, mo, y = m.group(1), m.group(2), m.group(3)
+    try:
+        datetime(int(y), int(mo), int(d))
+    except ValueError:
+        return None
+    return f"{y}-{mo}-{d}"
+
+
 # ----------------------------- Разбор страниц -----------------------------
 
 ARTICLE_RE = re.compile(r'<article[^>]*data-adid="(\d+)"[^>]*data-href="([^"]+)"(.*?)</article>', re.S)
