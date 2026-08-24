@@ -479,6 +479,7 @@ function renderFeed(){
       hot=$("fhot").classList.contains("on"),
       self=$("fself").classList.contains("on");
   var out=ads.filter(function(a){
+    if(a.price_eur==null) return false;
     if(q&&(a.title+" "+a.descr+" "+a.location).toLowerCase().indexOf(q)<0) return false;
     if(ck&&!ck[a.category_id]) return false;
     if(hot&&!hotOk(a)) return false;
@@ -488,7 +489,7 @@ function renderFeed(){
   if(sort==="price_asc") out.sort(function(x,y){return (x.price_eur==null?1e15:x.price_eur)-(y.price_eur==null?1e15:y.price_eur);});
   else if(sort==="price_desc") out.sort(function(x,y){return (y.price_eur==null?-1:y.price_eur)-(x.price_eur==null?-1:x.price_eur);});
   else out.sort(function(x,y){return String(y.posted_at||y.first_seen||"").localeCompare(String(x.posted_at||x.first_seen||""));});
-  if(hot) out.sort(function(x,y){return ageMin(x)-ageMin(y);});
+  if(hot&&sort==="first_seen") out.sort(function(x,y){return ageMin(x)-ageMin(y);});
   var vis=out.slice(0,feedCap);
   $("grid").innerHTML=vis.map(card).join("");
   $("shown").textContent=out.length;
@@ -509,7 +510,7 @@ function renderBoard(){
     var c=CATMAP[cid]; if(!c) return;
     var ck=catIds(cid);
     var hot=$("fhot").classList.contains("on"), self=$("fself").classList.contains("on");
-    var all=ads.filter(function(a){ return ck[a.category_id]&&sellerOk(a)&&priceOk(a)&&(!hot||hotOk(a))&&(!self||selfOk(a)); })
+    var all=ads.filter(function(a){ return a.price_eur!=null&&ck[a.category_id]&&sellerOk(a)&&priceOk(a)&&(!hot||hotOk(a))&&(!self||selfOk(a)); })
                .sort(function(x,y){return String(y.posted_at||y.first_seen||"").localeCompare(String(x.posted_at||x.first_seen||""));});
     if(hot) all.sort(function(x,y){return ageMin(x)-ageMin(y);});
     var lim=colLimits[cid]||25;
