@@ -23,15 +23,16 @@ UA_HDR = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, l
 ID_RE = re.compile(r"(?:/start\s+|/ad\s+)?(?:https?://www\.kleinanzeigen\.de/s-anzeige/[^\s]*?/)?(\d{6,12})(?:[^\d].*)?$")
 
 
-def _call(token, method, **params):
+def _call(token, method, _http_timeout=25, _quiet=False, **params):
     data = json.dumps(params).encode()
     req = urllib.request.Request(API.format(token=token, method=method), data=data,
                                  method="POST", headers={"content-type": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=25) as r:
+        with urllib.request.urlopen(req, timeout=_http_timeout) as r:
             return json.load(r)
     except Exception as e:
-        print(f"  tg:{method} → {type(e).__name__} {e}")
+        if not _quiet:
+            print(f"  tg:{method} → {type(e).__name__} {e}")
         return {}
 
 
@@ -230,9 +231,10 @@ def start_polling():
     def loop():
         off = int(db.kv_get("tg_offset", 0) or 0)
         while not st["stop"]:
-            r = _call(token, "getUpdates", offset=off, timeout=25, limit=10)
+            r = _call(token, "getUpdates", offset=off, timeout=25, limit=10,
+                      _http_timeout=40, _quiet=True)
             if not r.get("ok"):
-                time.sleep(2)
+                time.sleep(3)
                 continue
             for u in r.get("result", []):
                 off = max(off, u["update_id"] + 1)
