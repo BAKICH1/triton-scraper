@@ -133,12 +133,14 @@ def build():
     with open(OUT_DATA, "w", encoding="utf-8") as f:
         f.write(data_str)
 
-    # index.html перезаливаем только при смене шаблона — данные живут в ads.json
+    # index.html перезаливаем при смене шаблона ИЛИ числа категорий
+    # (категории зашиты в index) — данные живут в ads.json
+    sig = f"{tpl_hash}:{len(cat_rows)}"
     try:
         state = json.load(open(STATE_FILE, encoding="utf-8"))
     except Exception:
         state = {}
-    if state.get("tpl") != tpl_hash or not os.path.exists(OUT):
+    if state.get("sig") != sig or not os.path.exists(OUT):
         html = (html_tpl
                 .replace("/*__ADS__*/[]", json.dumps(ads[:150], ensure_ascii=False))
                 .replace("/*__CATS__*/[]", json.dumps(cat_rows, ensure_ascii=False))
@@ -150,7 +152,7 @@ def build():
         _syntax_check(html)
         with open(OUT, "w", encoding="utf-8") as f:
             f.write(html)
-        json.dump({"tpl": tpl_hash}, open(STATE_FILE, "w", encoding="utf-8"))
+        json.dump({"sig": sig}, open(STATE_FILE, "w", encoding="utf-8"))
         print(f"✔ index.html пересобран (шаблон {tpl_hash})")
     with open(OUT_VER, "w", encoding="utf-8") as f:
         f.write(version)
