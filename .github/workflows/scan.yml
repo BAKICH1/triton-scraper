@@ -38,6 +38,7 @@ jobs:
         env:
           HERENOW_SLUG: ${{ secrets.HERENOW_SLUG }}
           HERENOW_CLAIM: ${{ secrets.HERENOW_CLAIM }}
+          HERENOW_API_KEY: ${{ secrets.HERENOW_API_KEY }}
 
       - name: Сохранить базу в кэш
         if: always()
