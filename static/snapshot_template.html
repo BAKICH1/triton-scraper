@@ -335,6 +335,7 @@ function fetchText(url,timeout){
 var STAMP="__STAMP__";
 var TPL="__TPLHASH__", DATAV="__VERSION__", TSI="__TSISO__", feedCap=150;
 var ads=ADS.slice(), seen={}, pendingNew=0, tab="feed",
+    TOTAL=__TOTAL__,
     auto=localStorage.getItem("kl_auto")!=="off",
     sound=localStorage.getItem("kl_sound")!=="off",
     liveOk=false, cols=[];
@@ -503,7 +504,8 @@ function renderColSel(){
 function render(){
   if(tab==="feed"){ $("grid").style.display="grid"; $("board").style.display="none"; $("empty").style.display="none"; renderFeed(); }
   else { $("grid").style.display="none"; $("board").style.display="flex"; $("empty").style.display="none"; renderBoard(); }
-  $("cntAll").textContent=ads.length;
+  document.querySelector(".tabstat").style.display=(tab==="feed")?"":"none";
+  $("cntAll").textContent=TOTAL;
 }
 
 /* ===== Живое обновление ===== */
@@ -622,7 +624,7 @@ function refreshData(){
   fetch("ads.json?"+Date.now(),{cache:"no-store"}).then(function(r){return r.json();}).then(function(d){
     if(d.tpl&&TPL&&d.tpl!==TPL){ location.reload(); return; }   // сменился шаблон — перезагрузимся
     if(d.ver===DATAV&&ads.length>=(d.ads||[]).length){ freshChip(d.ts,true); return; }
-    DATAV=d.ver; ads=d.ads.slice(); $("cntAll").textContent=d.total;
+    DATAV=d.ver; ads=d.ads.slice(); TOTAL=d.total||ads.length; $("cntAll").textContent=TOTAL;
     freshChip(d.ts,true); render(); updTitle();
   }).catch(function(){ freshChip(null,false); });
 }
