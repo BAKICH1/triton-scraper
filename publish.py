@@ -186,7 +186,7 @@ def _files_meta(files):
     return out
 
 
-def _upload(files, j):
+def _upload(files, j, api_key=""):
     ups = {(u.get("path")): u for u in j.get("upload", {}).get("uploads", [])}
     for path, (rpath, ctype) in files.items():
         if rpath not in ups:
@@ -197,9 +197,12 @@ def _upload(files, j):
         with urllib.request.urlopen(put, timeout=90) as r:
             r.read()
     u = j["upload"]
+    fin_headers = {"content-type": "application/json"}
+    if api_key:
+        fin_headers["Authorization"] = f"Bearer {api_key}"
     fin = urllib.request.Request(u["finalizeUrl"], method="POST",
-                                 data=json.dumps({"versionId": u["versionId"]}).encode(),
-                                 headers={"content-type": "application/json"})
+        data=json.dumps({"versionId": u["versionId"]}).encode(),
+        headers=fin_headers)
     with urllib.request.urlopen(fin, timeout=30) as r:
         r.read()
 
@@ -225,11 +228,15 @@ def update(slug, claim_token, files):
     api_key = os.environ.get("HERENOW_API_KEY", "").strip()
     if api_key:
         hdrs["Authorization"] = f"Bearer {api_key}"
-    body = json.dumps({"files": _files_meta(files), "claimToken": claim_token}).encode()
+        claim_token = ""          # закреплённый сайт: только Bearer, без claimToken
+    payload = {"files": _files_meta(files)}
+    if claim_token:
+        payload["claimToken"] = claim_token
+    body = json.dumps(payload).encode()
     req = urllib.request.Request(f"{API}/{slug}", data=body, method="PUT", headers=hdrs)
     with urllib.request.urlopen(req, timeout=30) as r:
         j = json.load(r)
-    _upload(files, j)
+    _upload(files, j, api_key)
     return j
 
 
