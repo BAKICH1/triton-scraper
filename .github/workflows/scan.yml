@@ -64,7 +64,7 @@ jobs:
       - name: Следующий цикл (цепочка)
         if: always()
         run: |
-          sleep 15
+          sleep 5
           gh workflow run scan.yml --ref main
         env:
           GH_TOKEN: ${{ github.token }}
