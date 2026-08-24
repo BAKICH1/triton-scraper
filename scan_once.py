@@ -107,8 +107,10 @@ def main() -> int:
     print("скан:", mon.last_scan_at, "| найдено/новых за раунд:", mon.new_in_last_scan,
           "| статус:", mon.status,
           ("| ошибка: " + mon.last_error) if mon.last_error else "")
-    enrich_member_since()
+    # публикуем СРАЗУ после скана — свежие объявления на сайте на минуту раньше;
+    # даты саморегов догонят следующим циклом (окно фильтра — 2 дня)
     ok = publish.republish()
+    enrich_member_since()
     # сжать WAL в основной файл — чтобы кэш/копия базы были полными
     try:
         import sqlite3
