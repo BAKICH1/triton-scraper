@@ -12,6 +12,7 @@ import traceback
 import db
 import monitor
 import publish
+import scraper
 
 
 def main() -> int:
@@ -21,6 +22,13 @@ def main() -> int:
         with open(os.path.join(db.DATA_DIR, "herenow_claim.txt"), "w", encoding="utf-8") as f:
             f.write(f"site: https://{slug}.here.now\nslug: {slug}\nclaimToken: {claim}\n")
     db.init()
+    # свежая база (CI-раннер): заполняем дерево категорий — без него пустые
+    # селекторы, мёртвая доска и очередь просмотров доски
+    if not db.get_categories():
+        fb = scraper.load_fallback_categories(
+            os.path.join(db.DATA_DIR, "categories_fallback.json"))
+        if fb:
+            db.save_categories(fb)
     mon = monitor.Monitor()          # поток не запускаем — нужен только один раунд
     mon._scan_round()
     print("скан:", mon.last_scan_at, "| найдено/новых за раунд:", mon.new_in_last_scan,
