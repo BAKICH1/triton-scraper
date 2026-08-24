@@ -125,6 +125,10 @@ main{padding:22px 28px 80px}
 .chip.self{left:8px;top:33px;background:var(--ink);color:var(--inktext);border:1px solid var(--bg)}
 .chip.pro{right:8px;background:rgba(0,0,0,.6);border:1px solid var(--border-hi);color:#fff;backdrop-filter:blur(4px)}
 .pr{display:flex;align-items:baseline;gap:7px;margin-top:auto}
+.tgbtn{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border:1px solid var(--border);border-radius:9px;color:var(--dim);transition:.15s;flex:none}
+.tgbtn:hover{border-color:var(--ink);color:var(--ink);transform:translateY(-1px)}
+.tgbtn .ic{width:14px;height:14px}
+body.notg .tgbtn{display:none}
 .pval{font-weight:650;font-size:14.5px;color:var(--text);font-variant-numeric:tabular-nums;letter-spacing:.2px}
 .pval small{font-weight:400;color:var(--dim);font-size:11px;letter-spacing:0}
 .ptag{font-size:10px;color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:1px 5px;letter-spacing:.3px;white-space:nowrap}
@@ -354,7 +358,8 @@ function fetchText(url,timeout){
 /* ===== Состояние ===== */
 var STAMP="__STAMP__";
 var TPL="__TPLHASH__", DATAV="__VERSION__", TSI="__TSISO__", feedCap=150;
-var ads=ADS.slice(), seen={}, pendingNew=0, pendingSelf=0, counted={}, booted=false, tab="feed",
+var TGBOT="__TGBOT__",
+    ads=ADS.slice(), seen={}, pendingNew=0, pendingSelf=0, counted={}, booted=false, tab="feed",
     TOTAL=__TOTAL__,
     auto=localStorage.getItem("kl_auto")!=="off",
     sound=localStorage.getItem("kl_sound")!=="off",
@@ -395,14 +400,18 @@ function saveSeen(){ var out=[],k; for(k in seen){out.push(k);} try{localStorage
 
 /* ===== Цена ===== */
 function fmtEur(v){ return (+v).toLocaleString("ru-RU"); }
+function tgBtn(a){
+  if(!TGBOT||!a.id) return "";
+  return '<a class="tgbtn" href="https://t.me/'+TGBOT+'?start='+esc(a.id)+'" target="_blank" rel="noopener" title="Выгрузить в Telegram (бета)"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg></a>';
+}
 function priceHtml(a){
-  if(a.price_eur===0) return '<div class="pr"><span class="pval free">Бесплатно</span></div>';
+  if(a.price_eur===0) return '<div class="pr"><span class="pval free">Бесплатно</span>'+tgBtn(a)+'</div>';
   if(a.price_eur==null){
     var t=a.price_text&&a.price_text!=="—" ? a.price_text+" · " : "";
-    return '<div class="pr"><span class="pval none">'+esc(t)+'цена не указана</span></div>';
+    return '<div class="pr"><span class="pval none">'+esc(t)+'цена не указана</span>'+tgBtn(a)+'</div>';
   }
   return '<div class="pr"><span class="pval">'+fmtEur(a.price_eur)+' €</span>'+
-    (a.negotiable?'<span class="ptag">VB · торг</span>':"")+'</div>';
+    (a.negotiable?'<span class="ptag">VB · торг</span>':"")+tgBtn(a)+'</div>';
 }
 
 /* ===== Карточки ===== */
@@ -648,6 +657,7 @@ $("btnSound").onclick=function(){ sound=!sound; localStorage.setItem("kl_sound",
 function debounce(f,ms){ var t; return function(){ var a=arguments,self=this; clearTimeout(t); t=setTimeout(function(){f.apply(self,a);},ms); }; }
 if(!auto) $("btnAuto").textContent="Авто: выкл";
 if(!sound) $("btnSound").textContent="Звук: выкл";
+if(!TGBOT) document.body.classList.add("notg");
 renderColSel(); updTitle(); render(); scan(true);
 setInterval(function(){ if(auto&&document.visibilityState==="visible") scan(false); },60000);
 
