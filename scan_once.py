@@ -44,6 +44,7 @@ def enrich_member_since(limit: int = 150, delay: float = 1.0, batch: int = 25,
     f = scraper.Fetcher(min_delay=delay, timeout=15)
     fp = scraper.Fetcher(min_delay=1.0, timeout=25)   # темп для прокси-маршрута
     done = got = 0
+    batch_i = 0
 
     def stopped():
         return stop is not None and stop.is_set()
@@ -52,11 +53,13 @@ def enrich_member_since(limit: int = 150, delay: float = 1.0, batch: int = 25,
         now = datetime.now(timezone.utc)
         since = (now - timedelta(hours=window_h)).isoformat(timespec="seconds")
         retry_since = (now - timedelta(hours=retry_h)).isoformat(timespec="seconds")
+        # первые батчи — накрыть новейшие, дальше — дренаж бэклога от старых
+        order = "DESC" if batch_i < 2 else "ASC"
         rows = conn.execute(
-            """SELECT id,url,ms_tries FROM ads
+            f"""SELECT id,url,ms_tries FROM ads
                WHERE url!='' AND ms_tries<3 AND first_seen>=?
                  AND (member_since IS NULL OR (member_since='' AND first_seen>=?))
-               ORDER BY ms_tries ASC, first_seen DESC LIMIT ?""",
+               ORDER BY ms_tries ASC, first_seen {order} LIMIT ?""",
             (since, retry_since, min(batch, limit - done))).fetchall()
         if not rows:
             break
@@ -107,6 +110,7 @@ def enrich_member_since(limit: int = 150, delay: float = 1.0, batch: int = 25,
                 done += 1
         if len(results) < len(rows):   # остановились посреди батча
             break
+        batch_i += 1
 
     conn.close()
     if done:
