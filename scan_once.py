@@ -54,7 +54,7 @@ def enrich_member_since(limit: int = 150, delay: float = 1.0, batch: int = 25,
         since = (now - timedelta(hours=window_h)).isoformat(timespec="seconds")
         retry_since = (now - timedelta(hours=retry_h)).isoformat(timespec="seconds")
         # первые батчи — накрыть новейшие, дальше — дренаж бэклога от старых
-        order = "DESC" if batch_i < 2 else "ASC"
+        order = "DESC" if batch_i < 3 else "ASC"
         rows = conn.execute(
             f"""SELECT id,url,ms_tries FROM ads
                WHERE url!='' AND ms_tries<3 AND first_seen>=?
