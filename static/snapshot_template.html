@@ -198,6 +198,7 @@ footer a{color:var(--muted);border-bottom:1px solid var(--border)}
 <div class="filters">
   <input type="text" id="fq" placeholder="Поиск по названию, описанию, городу…">
 <button id="fhot" class="fhot" type="button" title="Возраст 20+ минут, просмотров от 10; iPhone и TOP-объявления скрыты"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>Горячие</button>
+<button id="fwarm" class="fhot" type="button" title="Скорость просмотров от 0.3 в минуту — интерес набирает обороты"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v9.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></svg>Тёплые</button>
 <button id="fself" class="fhot" type="button" title="Продавец зарегистрирован менее 2 дней назад — свежие аккаунты"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3.4"/><path d="M17 11a3.4 3.4 0 1 0-1.5-6.4"/><path d="M19 18v-1.6a3.6 3.6 0 0 0-2.4-3.2"/></svg>Самореги</button>
 </div>
 <div class="filters sub">
@@ -424,6 +425,7 @@ function chips(a,isNew){
 var IPHONE_RE=/iphone|айфон/i;
 function ageMin(a){ var t=Date.parse(a.posted_at||a.first_seen); return t?(Date.now()-t)/6e4:1e9; }
 function hotOk(a){ return a.views!=null&&a.views>=10&&ageMin(a)>=20&&!IPHONE_RE.test(a.title)&&!a.is_top; }
+function warmOk(a){ return a.vr!=null&&a.vr>=0.3; }
 function selfOk(a){ var t=Date.parse(a.member_since||""); return !!t&&(Date.now()-t)/864e5<2; }
 function metaRow(a,compact){
   var cat=a.cat_name||(CATMAP[a.category_id]||{}).name||"";
@@ -477,12 +479,13 @@ function renderFeed(){
   var q=$("fq").value.toLowerCase(), ck=$("fcat").value?catIds($("fcat").value):null,
       sort=$("fsort").value,
       hot=$("fhot").classList.contains("on"),
+      warm=$("fwarm").classList.contains("on"),
       self=$("fself").classList.contains("on");
   var out=ads.filter(function(a){
     if(a.price_eur==null) return false;
     if(q&&(a.title+" "+a.descr+" "+a.location).toLowerCase().indexOf(q)<0) return false;
     if(ck&&!ck[a.category_id]) return false;
-    if(hot&&!hotOk(a)) return false;
+    if((hot||warm)&&!(hot&&hotOk(a)||warm&&warmOk(a))) return false;
     if(self&&!selfOk(a)) return false;
     return sellerOk(a)&&priceOk(a);
   });
@@ -490,6 +493,7 @@ function renderFeed(){
   else if(sort==="price_desc") out.sort(function(x,y){return (y.price_eur==null?-1:y.price_eur)-(x.price_eur==null?-1:x.price_eur);});
   else out.sort(function(x,y){return String(y.posted_at||y.first_seen||"").localeCompare(String(x.posted_at||x.first_seen||""));});
   if(hot&&sort==="first_seen") out.sort(function(x,y){return ageMin(x)-ageMin(y);});
+  else if(warm&&sort==="first_seen") out.sort(function(x,y){return (y.vr||0)-(x.vr||0);});
   var vis=out.slice(0,feedCap);
   $("grid").innerHTML=vis.map(card).join("");
   $("shown").textContent=out.length;
@@ -509,8 +513,8 @@ function renderBoard(){
   cols.forEach(function(cid){
     var c=CATMAP[cid]; if(!c) return;
     var ck=catIds(cid);
-    var hot=$("fhot").classList.contains("on"), self=$("fself").classList.contains("on");
-    var all=ads.filter(function(a){ return a.price_eur!=null&&ck[a.category_id]&&sellerOk(a)&&priceOk(a)&&(!hot||hotOk(a))&&(!self||selfOk(a)); })
+    var hot=$("fhot").classList.contains("on"), warm=$("fwarm").classList.contains("on"), self=$("fself").classList.contains("on");
+    var all=ads.filter(function(a){ return a.price_eur!=null&&ck[a.category_id]&&sellerOk(a)&&priceOk(a)&&((!hot&&!warm)||(hot&&hotOk(a))||(warm&&warmOk(a)))&&(!self||selfOk(a)); })
                .sort(function(x,y){return String(y.posted_at||y.first_seen||"").localeCompare(String(x.posted_at||x.first_seen||""));});
     if(hot) all.sort(function(x,y){return ageMin(x)-ageMin(y);});
     var lim=colLimits[cid]||25;
@@ -629,6 +633,12 @@ try{ if(localStorage.getItem("kl_hot")==="1") $("fhot").classList.add("on"); }ca
 $("fhot").onclick=function(){
   this.classList.toggle("on");
   try{ localStorage.setItem("kl_hot", this.classList.contains("on")?"1":"0"); }catch(e){}
+  render();
+};
+try{ if(localStorage.getItem("kl_warm")==="1") $("fwarm").classList.add("on"); }catch(e){}
+$("fwarm").onclick=function(){
+  this.classList.toggle("on");
+  try{ localStorage.setItem("kl_warm", this.classList.contains("on")?"1":"0"); }catch(e){}
   render();
 };
 $("fcat").onchange=function(){ render(); if(tab==="feed") scan(true); };
