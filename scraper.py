@@ -144,6 +144,9 @@ def parse_listing(html_text: str):
     ads = []
     for m in ARTICLE_RE.finditer(html_text):
         ad_id, href, body = m.group(1), m.group(2), m.group(3)
+        # TOP-объявление: родительский <li> перед статьёй несёт badge-topad
+        pre = html_text[max(0, m.start() - 300):m.start()]
+        is_top = int("badge-topad" in pre or "is-topad" in pre)
         cat_id = None
         cm = CAT_RE.search(href)
         if cm:
@@ -165,6 +168,7 @@ def parse_listing(html_text: str):
             "posted_at": parse_date(date_text),
             "category_id": cat_id,
             "is_pro": int(bool(PRO_RE.search(body))),
+            "is_top": is_top,
             "img_count": int(gal.group(1)) if gal else 0,
             "url": BASE + href,
             "img": img_m.group(1) if img_m else None,
