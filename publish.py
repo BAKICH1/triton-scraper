@@ -221,8 +221,12 @@ def create(files, name="Монитор Kleinanzeigen", desc="Новые объя
 
 
 def update(slug, claim_token, files):
+    hdrs = dict(HEADERS)
+    api_key = os.environ.get("HERENOW_API_KEY", "").strip()
+    if api_key:
+        hdrs["Authorization"] = f"Bearer {api_key}"
     body = json.dumps({"files": _files_meta(files), "claimToken": claim_token}).encode()
-    req = urllib.request.Request(f"{API}/{slug}", data=body, method="PUT", headers=HEADERS)
+    req = urllib.request.Request(f"{API}/{slug}", data=body, method="PUT", headers=hdrs)
     with urllib.request.urlopen(req, timeout=30) as r:
         j = json.load(r)
     _upload(files, j)
@@ -255,9 +259,20 @@ def load_claim():
 
 
 def republish():
-    """Собрать снапшот и залить на here.now (обновить существующий сайт или создать новый)."""
+    """Собрать снапшот и залить на here.now.
+
+    Если адрес закреплён через HERENOW_SLUG (секрет CI) — обновляем только его:
+    при ошибке ПАДАЕМ громко, никаких тихих клонов со сменой адреса.
+    Случайный новый сайт создаём только когда адрес вообще не задан.
+    """
     files = build()
     slug, token = load_claim()
+    pinned = os.environ.get("HERENOW_SLUG", "").strip()
+    if pinned:                       # адрес зафиксирован секретом — только он
+        token = token or os.environ.get("HERENOW_CLAIM", "").strip()
+        update(pinned, token, files)
+        print(f"↑ here.now обновлён: https://{pinned}.here.now/ ({time.strftime('%H:%M:%S')})")
+        return pinned
     if slug and token:
         try:
             update(slug, token, files)
