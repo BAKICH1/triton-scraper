@@ -182,7 +182,7 @@ footer a{color:var(--muted);border-bottom:1px solid var(--border-hi)}
     <option value="price_desc">Дороже сначала</option>
   </select>
   <label class="chk"><input type="checkbox" id="ffree"> только бесплатные</label>
-  <button id="fhot" class="fhot" type="button" title="Возраст 20 минут и старше, просмотров от 10; лоты iPhone скрыты"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>Горячие · 20+ мин</button>
+  <button id="fhot" class="fhot" type="button" title="Возраст 20 минут и старше, просмотров от 10; лоты iPhone и TOP-объявления скрыты"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>Горячие · 20+ мин</button>
 </div>
 
 <div class="coladd" id="colAddRow" style="display:none">
@@ -379,7 +379,7 @@ function chips(a,isNew){
 }
 var IPHONE_RE=/iphone|айфон/i;
 function ageMin(a){ var t=Date.parse(a.posted_at||a.first_seen); return t?(Date.now()-t)/6e4:1e9; }
-function hotOk(a){ return a.views!=null&&a.views>=10&&ageMin(a)>=20&&!IPHONE_RE.test(a.title); }
+function hotOk(a){ return a.views!=null&&a.views>=10&&ageMin(a)>=20&&!IPHONE_RE.test(a.title)&&!a.is_top; }
 function metaRow(a,compact){
   var cat=a.cat_name||(CATMAP[a.category_id]||{}).name||"";
   var h='<span class="mi">'+ico("clock")+esc(relTime(a))+'</span>';
@@ -462,8 +462,10 @@ function renderBoard(){
   cols.forEach(function(cid){
     var c=CATMAP[cid]; if(!c) return;
     var ck=catIds(cid);
-    var all=ads.filter(function(a){ return ck[a.category_id]&&sellerOk(a)&&priceOk(a); })
+    var hot=$("fhot").classList.contains("on");
+    var all=ads.filter(function(a){ return ck[a.category_id]&&sellerOk(a)&&priceOk(a)&&(!hot||hotOk(a)); })
                .sort(function(x,y){return String(y.posted_at||y.first_seen||"").localeCompare(String(x.posted_at||x.first_seen||""));});
+    if(hot) all.sort(function(x,y){return ageMin(x)-ageMin(y);});
     var lim=colLimits[cid]||25;
     var items=all.slice(0,lim);
     html+='<div class="col"><h4>'+esc(c.name)+' <span class="cnt">'+all.length+'</span>'+
