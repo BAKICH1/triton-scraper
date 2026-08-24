@@ -621,7 +621,7 @@ function freshChip(ts, ok){
 function refreshData(){
   fetch("ads.json?"+Date.now(),{cache:"no-store"}).then(function(r){return r.json();}).then(function(d){
     if(d.tpl&&TPL&&d.tpl!==TPL){ location.reload(); return; }   // сменился шаблон — перезагрузимся
-    if(d.ver===DATAV){ freshChip(d.ts,true); return; }
+    if(d.ver===DATAV&&ads.length>=(d.ads||[]).length){ freshChip(d.ts,true); return; }
     DATAV=d.ver; ads=d.ads.slice(); $("cntAll").textContent=d.total;
     freshChip(d.ts,true); render(); updTitle();
   }).catch(function(){ freshChip(null,false); });
