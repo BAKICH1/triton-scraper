@@ -24,11 +24,13 @@ def _fetch_via_proxy(url: str) -> str:
         return r.read().decode("utf-8", "replace")
 
 
-def enrich_member_since(limit: int = 28, delay: float = 1.5, window_h: int = 36) -> int:
+def enrich_member_since(limit: int = 44, delay: float = 1.05,
+                        window_h: int = 36, retry_h: int = 10) -> int:
     """Добирает дату регистрации аккаунта продавца со страниц объявлений.
 
-    NULL — ещё не пробовали, '' — пробовали, маркера нет (не ретраим),
-    ISO-дата — успешно. Приоритет: самые свежие объявления (окно window_h).
+    NULL — ещё не пробовали, '' — страница была, но маркера нет
+    (до 3 попыток, пока объявление свежее retry_h часов), ISO-дата — успешно.
+    Приоритет: непроверенные и самые свежие (окно window_h).
     Маршрут: напрямую, а при блокировке IP — через публичный прокси.
     """
     import sqlite3
@@ -36,10 +38,15 @@ def enrich_member_since(limit: int = 28, delay: float = 1.5, window_h: int = 36)
     from datetime import datetime, timezone, timedelta
 
     conn = sqlite3.connect(db.DB_PATH)
-    since = (datetime.now(timezone.utc) - timedelta(hours=window_h)).isoformat(timespec="seconds")
+    now = datetime.now(timezone.utc)
+    since = (now - timedelta(hours=window_h)).isoformat(timespec="seconds")
+    retry_since = (now - timedelta(hours=retry_h)).isoformat(timespec="seconds")
     rows = conn.execute(
-        "SELECT id,url FROM ads WHERE member_since IS NULL AND url!='' AND first_seen>=? "
-        "ORDER BY first_seen DESC LIMIT ?", (since, limit)).fetchall()
+        """SELECT id,url,ms_tries FROM ads
+           WHERE url!='' AND ms_tries<3 AND first_seen>=?
+             AND (member_since IS NULL OR (member_since='' AND first_seen>=?))
+           ORDER BY ms_tries ASC, first_seen DESC LIMIT ?""",
+        (since, retry_since, limit)).fetchall()
     if not rows:
         conn.close()
         return 0
@@ -49,7 +56,7 @@ def enrich_member_since(limit: int = 28, delay: float = 1.5, window_h: int = 36)
     fp = scraper.Fetcher(min_delay=1.0, timeout=25)   # темп для прокси-маршрута
     results = {}
 
-    for ad_id, url in rows:
+    for ad_id, url, tries in rows:
         html = None
         if direct_ok["flag"]:
             try:
@@ -58,7 +65,7 @@ def enrich_member_since(limit: int = 28, delay: float = 1.5, window_h: int = 36)
                 direct_ok["flag"] = False   # IP прикрыли — остальное через прокси
             except urllib.error.HTTPError as e:
                 if e.code in (404, 410):
-                    results[ad_id] = ""
+                    results[ad_id] = ("", 3)      # объявление исчезло — ретраи не нужны
                     continue
             except Exception:
                 pass
@@ -70,18 +77,23 @@ def enrich_member_since(limit: int = 28, delay: float = 1.5, window_h: int = 36)
                 html = fp.get(proxied)
             except urllib.error.HTTPError as e:
                 if e.code in (404, 410):
-                    results[ad_id] = ""
+                    results[ad_id] = ("", 3)
                     continue
             except Exception:
-                continue                     # ретрай в следующий цикл
-        results[ad_id] = scraper.parse_member_since(html) or ""
+                continue                     # сети нет — попытку не считаем
+        # страница получена: попытка засчитывается (без даты — ретраи до 3 раз)
+        results[ad_id] = (scraper.parse_member_since(html) or "", (tries or 0) + 1)
 
     got = 0
     with conn:
-        for ad_id, ms in results.items():
-            conn.execute("UPDATE ads SET member_since=? WHERE id=?", (ms, ad_id))
+        for ad_id, (ms, new_tries) in results.items():
             if ms:
+                conn.execute("UPDATE ads SET member_since=?, ms_tries=3 WHERE id=?", (ms, ad_id))
                 got += 1
+            else:
+                # даты нет: 3 = хватит, иначе попытка+1 (ретрай, пока свежее)
+                conn.execute("UPDATE ads SET member_since='', ms_tries=? WHERE id=?",
+                             (3 if new_tries is None else new_tries, ad_id))
     conn.close()
     route = "прямо+прокси" if not direct_ok["flag"] else "напрямую"
     print(f"самореги: обогащено {got} из {len(rows)} очереди ({route})")
