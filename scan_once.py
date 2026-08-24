@@ -84,10 +84,13 @@ def enrich_member_since(limit: int = 150, delay: float = 0.85, batch: int = 25,
                     html = fp.get(proxied)
                 except urllib.error.HTTPError as e:
                     if e.code in (404, 410):
-                        results[ad_id] = ("", None)
+                        results[ad_id] = ("", None)   # объявление исчезло
                         continue
+                    continue                          # прочие ошибки прокси — ретрай позже
                 except Exception:
                     continue                     # сети нет — попытку не считаем
+            if not html:                          # страницы так и нет — без попытки
+                continue
             # страница получена: попытка засчитывается (без даты — ретраи до 3 раз)
             results[ad_id] = (scraper.parse_member_since(html) or "", (tries or 0) + 1)
 
@@ -137,8 +140,12 @@ def main() -> int:
     # обогащение саморегов — потоком на всё время цикла (скан+публикация+хвост)
     import threading
     stop_enr = threading.Event()
-    enr = threading.Thread(target=lambda: enrich_member_since(stop=stop_enr),
-                           daemon=True, name="enrich")
+    def _enrich_worker():
+        try:
+            enrich_member_since(stop=stop_enr)
+        except Exception as e:
+            print("самореги: поток остановился:", type(e).__name__, e)
+    enr = threading.Thread(target=_enrich_worker, daemon=True, name="enrich")
     enr.start()
     mon._scan_round()
     print("скан:", mon.last_scan_at, "| найдено/новых за раунд:", mon.new_in_last_scan,
