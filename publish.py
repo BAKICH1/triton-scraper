@@ -80,7 +80,8 @@ def collect_ads(limit=500, board_cats=(161, 80, 153, 192), board_hours=6, board_
                   posted_at,category_id,is_pro,is_top,member_since,img_count,url,img,first_seen,
                   views,views_prev,views_at,views_prev_at"""
     rows = conn.execute(
-        f"""SELECT {cols} FROM ads ORDER BY first_seen DESC LIMIT ?""", (limit,)).fetchall()
+        f"""SELECT {cols} FROM ads WHERE price_eur IS NOT NULL
+            ORDER BY first_seen DESC LIMIT ?""", (limit,)).fetchall()
     # backlog досочных категорий (с дочерними) за последние board_hours,
     # ниже самого старого объявления основного окна — дедуп в Python на всякий случай
     ph = ",".join("?" * len(board_cats))
@@ -88,6 +89,7 @@ def collect_ads(limit=500, board_cats=(161, 80, 153, 192), board_hours=6, board_
         extra = conn.execute(
             f"""SELECT {cols} FROM ads
                 WHERE category_id IN (SELECT id FROM categories WHERE id IN ({ph}) OR parent IN ({ph}))
+                  AND price_eur IS NOT NULL
                   AND first_seen >= ?
                   AND first_seen < (SELECT MIN(first_seen) FROM
                                     (SELECT first_seen FROM ads ORDER BY first_seen DESC LIMIT ?))
