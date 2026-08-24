@@ -24,79 +24,91 @@ def _fetch_via_proxy(url: str) -> str:
         return r.read().decode("utf-8", "replace")
 
 
-def enrich_member_since(limit: int = 44, delay: float = 1.05,
-                        window_h: int = 36, retry_h: int = 10) -> int:
+def enrich_member_since(limit: int = 150, delay: float = 1.0, batch: int = 25,
+                        window_h: int = 36, retry_h: int = 10, stop=None) -> int:
     """Добирает дату регистрации аккаунта продавца со страниц объявлений.
 
     NULL — ещё не пробовали, '' — страница была, но маркера нет
     (до 3 попыток, пока объявление свежее retry_h часов), ISO-дата — успешно.
     Приоритет: непроверенные и самые свежие (окно window_h).
     Маршрут: напрямую, а при блокировке IP — через публичный прокси.
+    Работает батчами и может останавливаться между запросами (stop-событие) —
+    поток гоняется параллельно с публикацией, лимит — предохранитель.
     """
     import sqlite3
     import urllib.error
     from datetime import datetime, timezone, timedelta
 
     conn = sqlite3.connect(db.DB_PATH)
-    now = datetime.now(timezone.utc)
-    since = (now - timedelta(hours=window_h)).isoformat(timespec="seconds")
-    retry_since = (now - timedelta(hours=retry_h)).isoformat(timespec="seconds")
-    rows = conn.execute(
-        """SELECT id,url,ms_tries FROM ads
-           WHERE url!='' AND ms_tries<3 AND first_seen>=?
-             AND (member_since IS NULL OR (member_since='' AND first_seen>=?))
-           ORDER BY ms_tries ASC, first_seen DESC LIMIT ?""",
-        (since, retry_since, limit)).fetchall()
-    if not rows:
-        conn.close()
-        return 0
-
     direct_ok = {"flag": True}
     f = scraper.Fetcher(min_delay=delay, timeout=15)
     fp = scraper.Fetcher(min_delay=1.0, timeout=25)   # темп для прокси-маршрута
-    results = {}
+    done = got = 0
 
-    for ad_id, url, tries in rows:
-        html = None
-        if direct_ok["flag"]:
-            try:
-                html = f.get(url)
-            except scraper.BlockedError:
-                direct_ok["flag"] = False   # IP прикрыли — остальное через прокси
-            except urllib.error.HTTPError as e:
-                if e.code in (404, 410):
-                    results[ad_id] = ("", 3)      # объявление исчезло — ретраи не нужны
-                    continue
-            except Exception:
-                pass
-        if html is None:
-            try:
-                import urllib.parse
-                proxied = ("https://api.allorigins.win/raw?url="
-                           + urllib.parse.quote(url, safe=""))
-                html = fp.get(proxied)
-            except urllib.error.HTTPError as e:
-                if e.code in (404, 410):
-                    results[ad_id] = ("", 3)
-                    continue
-            except Exception:
-                continue                     # сети нет — попытку не считаем
-        # страница получена: попытка засчитывается (без даты — ретраи до 3 раз)
-        results[ad_id] = (scraper.parse_member_since(html) or "", (tries or 0) + 1)
+    def stopped():
+        return stop is not None and stop.is_set()
 
-    got = 0
-    with conn:
-        for ad_id, (ms, new_tries) in results.items():
-            if ms:
-                conn.execute("UPDATE ads SET member_since=?, ms_tries=3 WHERE id=?", (ms, ad_id))
-                got += 1
-            else:
-                # даты нет: 3 = хватит, иначе попытка+1 (ретрай, пока свежее)
-                conn.execute("UPDATE ads SET member_since='', ms_tries=? WHERE id=?",
-                             (3 if new_tries is None else new_tries, ad_id))
+    while done < limit and not stopped():
+        now = datetime.now(timezone.utc)
+        since = (now - timedelta(hours=window_h)).isoformat(timespec="seconds")
+        retry_since = (now - timedelta(hours=retry_h)).isoformat(timespec="seconds")
+        rows = conn.execute(
+            """SELECT id,url,ms_tries FROM ads
+               WHERE url!='' AND ms_tries<3 AND first_seen>=?
+                 AND (member_since IS NULL OR (member_since='' AND first_seen>=?))
+               ORDER BY ms_tries ASC, first_seen DESC LIMIT ?""",
+            (since, retry_since, min(batch, limit - done))).fetchall()
+        if not rows:
+            break
+        results = {}
+        for ad_id, url, tries in rows:
+            if stopped():
+                break
+            html = None
+            if direct_ok["flag"]:
+                try:
+                    html = f.get(url)
+                except scraper.BlockedError:
+                    direct_ok["flag"] = False   # IP прикрыли — остальное через прокси
+                except urllib.error.HTTPError as e:
+                    if e.code in (404, 410):
+                        results[ad_id] = ("", None)   # объявление исчезло — ретраи не нужны
+                        continue
+                except Exception:
+                    pass
+            if html is None:
+                try:
+                    import urllib.parse
+                    proxied = ("https://api.allorigins.win/raw?url="
+                               + urllib.parse.quote(url, safe=""))
+                    html = fp.get(proxied)
+                except urllib.error.HTTPError as e:
+                    if e.code in (404, 410):
+                        results[ad_id] = ("", None)
+                        continue
+                except Exception:
+                    continue                     # сети нет — попытку не считаем
+            # страница получена: попытка засчитывается (без даты — ретраи до 3 раз)
+            results[ad_id] = (scraper.parse_member_since(html) or "", (tries or 0) + 1)
+
+        with conn:
+            for ad_id, (ms, new_tries) in results.items():
+                if ms:
+                    conn.execute("UPDATE ads SET member_since=?, ms_tries=3 WHERE id=?",
+                                 (ms, ad_id))
+                    got += 1
+                else:
+                    # даты нет: None = хватит, иначе попытка+1 (ретрай, пока свежее)
+                    conn.execute("UPDATE ads SET member_since='', ms_tries=? WHERE id=?",
+                                 (3 if new_tries is None else new_tries, ad_id))
+                done += 1
+        if len(results) < len(rows):   # остановились посреди батча
+            break
+
     conn.close()
-    route = "прямо+прокси" if not direct_ok["flag"] else "напрямую"
-    print(f"самореги: обогащено {got} из {len(rows)} очереди ({route})")
+    if done:
+        route = "прямо+прокси" if not direct_ok["flag"] else "напрямую"
+        print(f"самореги: обогащено {got} из {done} попыток ({route})")
     return got
 
 
@@ -128,14 +140,20 @@ def main() -> int:
           ("| ошибка: " + mon.last_error) if mon.last_error else "")
     # публикуем СРАЗУ после скана — свежие объявления на сайте на минуту раньше;
     # даты саморегов догонят следующим циклом (окно фильтра — 2 дня)
+    # обогащение саморегов — потоком, параллельно публикации и TG-хвосту
+    import threading
+    stop_enr = threading.Event()
+    enr = threading.Thread(target=lambda: enrich_member_since(stop=stop_enr),
+                           daemon=True, name="enrich")
+    enr.start()
     ok = publish.republish()
-    enrich_member_since()
     # хвост: бот продолжает отвечать, пока стартует следующий раннер
     try:
         import telegram_bot
         telegram_bot.tail(tg, int(os.environ.get("TG_TAIL", "40")))
     except Exception:
         pass
+    stop_enr.set(); enr.join(timeout=8)
     # сжать WAL в основной файл — чтобы кэш/копия базы были полными
     try:
         import sqlite3
