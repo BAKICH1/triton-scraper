@@ -24,7 +24,7 @@ def _fetch_via_proxy(url: str) -> str:
         return r.read().decode("utf-8", "replace")
 
 
-def enrich_member_since(limit: int = 150, delay: float = 1.0, batch: int = 25,
+def enrich_member_since(limit: int = 150, delay: float = 0.85, batch: int = 25,
                         window_h: int = 36, retry_h: int = 10, stop=None) -> int:
     """Добирает дату регистрации аккаунта продавца со страниц объявлений.
 
