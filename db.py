@@ -83,6 +83,8 @@ def init():
                 "ALTER TABLE ads ADD COLUMN views_prev_at TEXT",
                 "ALTER TABLE ads ADD COLUMN is_top INTEGER DEFAULT 0",
                 "ALTER TABLE ads ADD COLUMN member_since TEXT",
+                "ALTER TABLE ads ADD COLUMN descr_full TEXT",
+                "ALTER TABLE ads ADD COLUMN imgs TEXT",
                 "ALTER TABLE ads ADD COLUMN ms_tries INTEGER DEFAULT 0"):
         try:
             _conn.execute(ddl)
