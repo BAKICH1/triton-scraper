@@ -111,10 +111,40 @@ def collect_ads(limit=500, board_cats=(161, 80, 153, 192), board_hours=6, board_
             a.pop(k, None)   # views_prev нужен клиенту: прирост за цикл
         ads.append(a)
 
+    # прирост просмотров за окна: 20м / 1ч / 2ч / 4ч / 8ч (по истории замеров)
+    WINDOWS = ((20, "20"), (60, "60"), (120, "120"), (240, "240"), (480, "480"))
+    now_dt = datetime.now(timezone.utc)
+    hist = {}
+    try:
+        for h in conn.execute(
+                "SELECT ad_id, ts, views FROM views_hist WHERE ts >= ?",
+                ((now_dt - timedelta(hours=9)).isoformat(timespec="seconds"),)):
+            hist.setdefault(h["ad_id"], []).append((h["ts"], h["views"]))
+    except Exception:
+        hist = {}
+    import bisect
+    def growth(ad_id, views_now):
+        pts = hist.get(ad_id)
+        if not pts or views_now is None:
+            return None
+        out = {}
+        for mins, key in WINDOWS:
+            cutoff = (now_dt - timedelta(minutes=mins)).isoformat(timespec="seconds")
+            base = None
+            for ts, v in pts:            # последняя точка ДО окна
+                if ts <= cutoff:
+                    base = v
+                else:
+                    break
+            out[key] = max(0, views_now - base) if base is not None else None
+        return out or None
+
     for r in rows:
         add(r, True)
+        ads[-1]["gr"] = growth(r["id"], r["views"])
     for r in extra:
         add(r, False)
+        ads[-1]["gr"] = growth(r["id"], r["views"])
     ads.sort(key=lambda a: a["first_seen"], reverse=True)
     total = conn.execute("SELECT COUNT(*) c FROM ads").fetchone()["c"]
     conn.close()
