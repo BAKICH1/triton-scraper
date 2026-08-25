@@ -171,6 +171,18 @@ class Monitor(threading.Thread):
                     try:
                         html = self.fetcher.get(url)
                         ads = scraper.parse_listing(html)
+                        # моложе 20 минут не берём: до этого объявления «сырые»
+                        keep = []
+                        for ad in ads:
+                            pt = ad.get("posted_at")
+                            try:
+                                age = (datetime.now(timezone.utc) - datetime.fromisoformat(pt)).total_seconds() / 60 if pt else None
+                            except Exception:
+                                age = None
+                            if age is not None and age < 20:
+                                continue
+                            keep.append(ad)
+                        ads = keep
                         total_found += len(ads)
                         n_new, _ = db.upsert_ads(ads, source=src["type"])
                         total_new += n_new
