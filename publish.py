@@ -78,7 +78,7 @@ def collect_ads(limit=500, board_cats=(161, 80, 153, 192), board_hours=6, board_
         "SELECT id,slug,name,parent FROM categories ORDER BY parent NULLS FIRST, id")]
     cols = """id,title,descr,price_text,price_eur,negotiable,location,date_text,
                   posted_at,category_id,is_pro,is_top,member_since,img_count,url,img,first_seen,
-                  views,views_prev,views_at,views_prev_at"""
+                  views,views_prev,views_at,views_prev_at,descr_full,imgs"""
     rows = conn.execute(
         f"""SELECT {cols} FROM ads WHERE price_eur IS NOT NULL
             ORDER BY first_seen DESC LIMIT ?""", (limit,)).fetchall()
@@ -107,6 +107,13 @@ def collect_ads(limit=500, board_cats=(161, 80, 153, 192), board_hours=6, board_
         ids.add(r["id"])
         a = dict(r) | {"cat_name": cats.get(r["category_id"], ""), "vr": _view_rate(r)}
         a["descr"] = (a["descr"] or "")[:140] if is_feed else ""
+        # полное описание и галерея — карточка открывается мгновенно, без прокси
+        a["descr_full"] = (a.get("descr_full") or None) and a["descr_full"][:500]
+        try:
+            gal = json.loads(a.get("imgs") or "[]")
+        except Exception:
+            gal = []
+        a["imgs"] = [u for u in gal][:6]
         for k in ("views_prev_at", "views_at"):  # служебное наружу не отдаём
             a.pop(k, None)   # views_prev нужен клиенту: прирост за цикл
         ads.append(a)
