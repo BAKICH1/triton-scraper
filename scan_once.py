@@ -25,31 +25,39 @@ def _fetch_via_proxy(url: str) -> str:
 
 
 def enrich_member_since(limit: int = 150, delay: float = 1.0, batch: int = 25,
-                        window_h: int = 36, retry_h: int = 10, stop=None) -> int:
+                        window_h: int = 36, retry_h: int = 10, stop=None,
+                        budget_s: int = 85) -> int:
     """Добирает дату регистрации аккаунта продавца со страниц объявлений.
 
     NULL — ещё не пробовали, '' — страница была, но маркера нет
     (до 3 попыток, пока объявление свежее retry_h часов), ISO-дата — успешно.
     Приоритет: непроверенные и самые свежие (окно window_h).
     Маршрут: напрямую, а при блокировке IP — через публичный прокси.
-    Работает батчами и может останавливаться между запросами (stop-событие) —
-    поток гоняется параллельно с публикацией, лимит — предохранитель.
+
+    Результат коммитится ПОСЛЕ КАЖДОГО объявления (не батчем) и есть бюджет
+    времени budget_s — поток живёт параллельно циклу скана и останавливается
+    в любой момент без потери наработанного. Если прокси мёртв — не жжём
+    цикл таймаутами, выходим и попробуем в следующем.
     """
     import sqlite3
     import urllib.error
+    import time as _time
     from datetime import datetime, timezone, timedelta
 
     conn = sqlite3.connect(db.DB_PATH)
-    direct_ok = {"flag": True}
+    t0 = _time.monotonic()
+    direct_ok = True
+    proxy_ok = True
     f = scraper.Fetcher(min_delay=delay, timeout=15)
-    fp = scraper.Fetcher(min_delay=1.0, timeout=25)   # темп для прокси-маршрута
+    fp = scraper.Fetcher(min_delay=1.0, timeout=12)   # мёртвый прокси не ждём 25с
     done = got = 0
     batch_i = 0
 
     def stopped():
-        return stop is not None and stop.is_set()
+        return ((stop is not None and stop.is_set())
+                or (_time.monotonic() - t0 > budget_s))
 
-    while done < limit and not stopped():
+    while done < limit and not stopped() and (direct_ok or proxy_ok):
         now = datetime.now(timezone.utc)
         since = (now - timedelta(hours=window_h)).isoformat(timespec="seconds")
         retry_since = (now - timedelta(hours=retry_h)).isoformat(timespec="seconds")
@@ -63,23 +71,25 @@ def enrich_member_since(limit: int = 150, delay: float = 1.0, batch: int = 25,
             (since, retry_since, min(batch, limit - done))).fetchall()
         if not rows:
             break
-        results = {}
         for ad_id, url, tries in rows:
             if stopped():
                 break
             html = None
-            if direct_ok["flag"]:
+            if direct_ok:
                 try:
                     html = f.get(url)
                 except scraper.BlockedError:
-                    direct_ok["flag"] = False   # IP прикрыли — остальное через прокси
+                    direct_ok = False          # IP прикрыли — дальше через прокси
                 except urllib.error.HTTPError as e:
-                    if e.code in (404, 410):
-                        results[ad_id] = ("", None)   # объявление исчезло — ретраи не нужны
+                    if e.code in (404, 410):   # объявление исчезло — ретраи не нужны
+                        with conn:
+                            conn.execute("UPDATE ads SET member_since='', ms_tries=3 WHERE id=?",
+                                         (ad_id,))
+                        done += 1
                         continue
                 except Exception:
                     pass
-            if html is None:
+            if html is None and not direct_ok and proxy_ok:
                 try:
                     import urllib.parse
                     proxied = ("https://api.allorigins.win/raw?url="
@@ -87,35 +97,36 @@ def enrich_member_since(limit: int = 150, delay: float = 1.0, batch: int = 25,
                     html = fp.get(proxied)
                 except urllib.error.HTTPError as e:
                     if e.code in (404, 410):
-                        results[ad_id] = ("", None)   # объявление исчезло
+                        with conn:
+                            conn.execute("UPDATE ads SET member_since='', ms_tries=3 WHERE id=?",
+                                         (ad_id,))
+                        done += 1
                         continue
-                    continue                          # прочие ошибки прокси — ретрай позже
+                    proxy_ok = False            # прокси отвечает ошибкой — выходим
+                    break
                 except Exception:
-                    continue                     # сети нет — попытку не считаем
-            if not html:                          # страницы так и нет — без попытки
+                    proxy_ok = False            # таймаут/сеть — прокси мёртв, выходим
+                    break
+            if not html:
                 continue
-            # страница получена: попытка засчитывается (без даты — ретраи до 3 раз)
-            results[ad_id] = (scraper.parse_member_since(html) or "", (tries or 0) + 1)
-
-        with conn:
-            for ad_id, (ms, new_tries) in results.items():
+            ms = scraper.parse_member_since(html)
+            with conn:                          # коммит сразу — наработанное не теряем
                 if ms:
                     conn.execute("UPDATE ads SET member_since=?, ms_tries=3 WHERE id=?",
                                  (ms, ad_id))
                     got += 1
                 else:
-                    # даты нет: None = хватит, иначе попытка+1 (ретрай, пока свежее)
                     conn.execute("UPDATE ads SET member_since='', ms_tries=? WHERE id=?",
-                                 (3 if new_tries is None else new_tries, ad_id))
-                done += 1
-        if len(results) < len(rows):   # остановились посреди батча
-            break
+                                 ((tries or 0) + 1, ad_id))
+            done += 1
         batch_i += 1
 
     conn.close()
-    if done:
-        route = "прямо+прокси" if not direct_ok["flag"] else "напрямую"
-        print(f"самореги: обогащено {got} из {done} попыток ({route})")
+    route = ("напрямую" if direct_ok else
+             ("прямо+прокси" if proxy_ok else "напрямую (прокси недоступен)"))
+    if done or not direct_ok:
+        print(f"самореги: попыток {done}, дат найдено {got}, маршрут: {route} "
+              f"({_time.monotonic() - t0:.0f} c)", flush=True)
     return got
 
 
