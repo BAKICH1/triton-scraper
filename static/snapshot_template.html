@@ -129,6 +129,12 @@ main{padding:22px 28px 80px}
 .tgbtn:hover{border-color:var(--ink);color:var(--ink);transform:translateY(-1px)}
 .tgbtn .ic{width:14px;height:14px}
 body.notg .tgbtn{display:none}
+.rfrsh{margin-left:0;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--dim);cursor:pointer;transition:.15s;flex:none;font:inherit}
+.rfrsh:hover{border-color:var(--ink);color:var(--ink);transform:translateY(-1px)}
+.rfrsh .ic{width:14px;height:14px}
+.rfrsh.busy .ic{animation:spin 0.9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.rfrsh.err{border-color:#b3563f;color:#b3563f}
 .pval{font-weight:650;font-size:14.5px;color:var(--text);font-variant-numeric:tabular-nums;letter-spacing:.2px}
 .pval small{font-weight:400;color:var(--dim);font-size:11px;letter-spacing:0}
 .ptag{font-size:10px;color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:1px 5px;letter-spacing:.3px;white-space:nowrap}
@@ -405,14 +411,16 @@ function tgBtn(a){
   if(!TGBOT||!a.id) return "";
   return '<a class="tgbtn" href="https://t.me/'+TGBOT+'?start='+esc(a.id)+'" target="_blank" rel="noopener" title="Выгрузить в Telegram (бета)"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg></a>';
 }
-function priceHtml(a){
-  if(a.price_eur===0) return '<div class="pr"><span class="pval free">Бесплатно</span>'+tgBtn(a)+'</div>';
+function priceHtml(a,tg){
+  var tb = tg===false ? "" : tgBtn(a);   // внутри <a class="mini"> якорь вкладывать нельзя
+  var rb = tg===false ? "" : '<button class="rfrsh" data-id="'+esc(a.id)+'" title="Обновить данные: просмотры, продавец, скорость"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>';
+  if(a.price_eur===0) return '<div class="pr"><span class="pval free">Бесплатно</span>'+tb+rb+'</div>';
   if(a.price_eur==null){
     var t=a.price_text&&a.price_text!=="—" ? a.price_text+" · " : "";
-    return '<div class="pr"><span class="pval none">'+esc(t)+'цена не указана</span>'+tgBtn(a)+'</div>';
+    return '<div class="pr"><span class="pval none">'+esc(t)+'цена не указана</span>'+tb+rb+'</div>';
   }
   return '<div class="pr"><span class="pval">'+fmtEur(a.price_eur)+' €</span>'+
-    (a.negotiable?'<span class="ptag">VB · торг</span>':"")+tgBtn(a)+'</div>';
+    (a.negotiable?'<span class="ptag">VB · торг</span>':"")+tb+rb+'</div>';
 }
 
 /* ===== Карточки ===== */
@@ -452,7 +460,7 @@ function mini(a){
     (isNew?'<span class="chip new">NEW</span>':"")+(a.is_pro?'<span class="chip pro">PRO</span>':"")+(selfOk(a)?'<span class="chip self">АКК&lt;2д</span>':"")+
     '<span class="mimg">'+img+'</span>'+
     '<span class="mbody"><span class="mtitle">'+esc(a.title)+'</span>'+
-    priceHtml(a)+metaRow(a,true)+'</span></a>';
+    priceHtml(a,false)+metaRow(a,true)+'</span></a>';
 }
 
 /* ===== Фильтры ===== */
@@ -560,7 +568,10 @@ function mergeAds(fresh,srcLabel){
   var nowIso=new Date().toISOString();
   for(i=0;i<fresh.length;i++){
     var a=fresh[i];
-    if(!map[a.id]){ a.first_seen=nowIso; a.source=srcLabel; map[a.id]=a; ads.push(a); added++; }
+    if(!map[a.id]){
+      var am=ageMin(a); if(isFinite(am)&&am<20) continue;   // моложе 20 минут — не нужны
+      a.first_seen=nowIso; a.source=srcLabel; map[a.id]=a; ads.push(a); added++;
+    }
     else { map[a.id].title=a.title; map[a.id].price_eur=a.price_eur; map[a.id].price_text=a.price_text; map[a.id].img=a.img||map[a.id].img; map[a.id].img_count=a.img_count; }
   }
   if(ads.length>2000){ ads.sort(function(x,y){return String(y.first_seen||y.posted_at||"").localeCompare(String(x.first_seen||x.posted_at||""));}); ads=ads.slice(0,2000); }
@@ -629,6 +640,36 @@ $("fself").onclick=function(){
   render();
 };
 $("feedMore").onclick=function(){ feedCap+=150; render(); };
+/* обновление одного объявления: просмотры (s-vac) + продавец (страница) */
+function refreshAd(id, btn){
+  var a = ads.find(function(x){ return String(x.id)===String(id); });
+  if(!a||!btn||btn.classList.contains("busy")) return;
+  btn.classList.add("busy"); btn.classList.remove("err");
+  var ok1=false, ok2=false;
+  var pVac=fetchText("https://www.kleinanzeigen.de/s-vac-inc-get.json?adId="+encodeURIComponent(a.id), 12000)
+    .then(function(t){ var j=JSON.parse(t);
+      if(j&&j.numVisits!=null){ a.views=+j.numVisits; ok1=true;
+        var am=ageMin(a); if(am>=2) a.vr=Math.round(a.views/am*10)/10; } })
+    .catch(function(){});
+  var pPage=fetchText(a.url, 20000)
+    .then(function(h){
+      var m=h.match(/Aktiv\s+seit\s+(\d{2})\.(\d{2})\.(\d{4})/);
+      if(m){ a.member_since=m[3]+"-"+m[2]+"-"+m[1]; ok2=true; }
+      var p=h.match(/boxedarticle--price"[^>]*>\s*([\d.,]+)\s*€/);
+      if(p){ var v=parseFloat(p[1].replace(/\./g,"").replace(",",".")); if(!isNaN(v)){ a.price_eur=v; ok2=true; } } })
+    .catch(function(){});
+  Promise.all([pVac,pPage]).then(function(){
+    btn.classList.remove("busy");
+    if(!ok1&&!ok2){ btn.classList.add("err"); return; }
+    var el=document.querySelector('#grid article.card a.title[href="'+cssEsc(a.url)+'"]');
+    if(el&&el.parentElement){ el.parentElement.closest("article.card").outerHTML=card(a); }
+  });
+}
+function cssEsc(u){ return (window.CSS&&CSS.escape)?CSS.escape(u):u.replace(/[^\w\-]/g,"\\$&"); }
+$("grid").addEventListener("click",function(ev){
+  var b=ev.target.closest?ev.target.closest(".rfrsh"):null;
+  if(b){ ev.preventDefault(); ev.stopPropagation(); refreshAd(b.dataset.id,b); }
+});
 try{ if(localStorage.getItem("kl_hot")==="1") $("fhot").classList.add("on"); }catch(e){}
 $("fhot").onclick=function(){
   this.classList.toggle("on");
