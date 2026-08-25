@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{if(localStorage.getItem("kl_theme")==="dark")document.documentElement.classList.add("dark")}catch(e){}</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230f766e'/%3E%3Cpath d='M12 5.5v13M7 5.5v5a5 5 0 0 0 10 0v-5' stroke='%23ffffff' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
 <title>Triton Scraper — монитор Kleinanzeigen</title>
 <style>
@@ -137,7 +138,7 @@ main{padding:22px 28px 80px}
 .title{font-weight:600;font-size:13.5px;line-height:1.42;color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:38px}
 .chip{position:absolute;top:9px;border-radius:999px;font-size:9.5px;font-weight:750;letter-spacing:.8px;padding:3.5px 9px;z-index:2}
 .chip.new{left:9px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;box-shadow:0 4px 12px -4px rgba(15,118,110,.6)}
-.chip.self{left:9px;top:36px;background:rgba(224,179,60,.95);color:#231a02;border:1px solid rgba(255,255,255,.4)}
+.chip.self{left:9px;top:9px;background:rgba(224,179,60,.95);color:#231a02;border:1px solid rgba(255,255,255,.4)}
 .chip.pro{right:9px;background:rgba(17,19,24,.62);border:1px solid rgba(255,255,255,.16);color:#fff;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .pr{display:flex;align-items:center;flex-wrap:wrap;row-gap:6px;gap:7px;margin-top:auto}
 .tgbtn{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;width:31px;height:31px;border:1px solid var(--border);border-radius:10px;color:var(--dim);transition:.15s;flex:none;background:var(--panel)}
@@ -556,7 +557,7 @@ function mini(a){
   var isNew=!seen[a.id];
   var img=a.img?'<img loading="lazy" src="'+esc(a.img)+'" onerror="this.src=\''+PH+'\'">':'<img src="'+PH+'">';
   return '<a class="mini'+(isNew?" new":"")+'" data-id="'+esc(a.id)+'" href="'+esc(a.url)+'" target="_blank" rel="noopener">'+
-    (isNew?'<span class="chip new">NEW</span>':"")+(a.is_pro?'<span class="chip pro">PRO</span>':"")+(selfOk(a)?'<span class="chip self">АКК&lt;2д</span>':"")+
+    (isNew?'<span class="chip new">NEW</span>':"")+(a.is_pro?'<span class="chip pro">PRO</span>':"")+(selfOk(a)?'<span class="chip self"'+(isNew?' style="top:36px"':'')+'>АКК&lt;2д</span>':"")+
     '<span class="mimg">'+img+'</span>'+
     '<span class="mbody"><span class="mtitle">'+esc(a.title)+'</span>'+
     priceHtml(a,false)+metaRow(a,true)+'</span></a>';
@@ -618,7 +619,16 @@ function renderFeed(){
     more.style.display="block";
     more.textContent="Показать ещё "+Math.min(150,out.length-vis.length)+" · осталось "+(out.length-vis.length);
   } else more.style.display="none";
-  $("empty").style.display=(out.length&&tab==="feed")?"none":(tab==="feed"?"block":"none");
+  var em=$("empty");
+  if(tab==="feed"&&out.length===0){
+    var nf=Object.keys(FAV).length;
+    em.innerHTML=(favOn&&nf===0)
+      ?'<b style="display:block">В избранном пока пусто</b>Нажимай ★ на карточках — они сохранятся здесь, даже когда уйдут с площадки.'
+      :(favOn&&nf>0
+        ?'<b style="display:block">Под текущими фильтрами в избранном ничего нет</b>Ослабь фильтры или добавь ещё ★.'
+        :'<b style="display:block">Ничего не найдено</b>Измените фильтры или нажмите «Обновить».');
+    em.style.display="block";
+  } else em.style.display="none";
 }
 
 /* ===== Доска ===== */
@@ -628,7 +638,8 @@ function renderBoard(){
   var html="";
   var q=$("fq").value.toLowerCase(), sort=$("fsort").value;
   var hot=$("fhot").classList.contains("on"), warm=$("fwarm").classList.contains("on"), self=$("fself").classList.contains("on");
-  var anyFilter=!!q||!!$("fmin").value||!!$("fmax").value||!!$("fseller").value||hot||warm||self||favOn;
+  var ckF=$("fcat").value?catIds($("fcat").value):null;
+  var anyFilter=!!q||!!$("fmin").value||!!$("fmax").value||!!$("fseller").value||!!$("fcat").value||hot||warm||self||favOn;
   // запомним прокрутку каждого столбца — не сбрасывать её при перерисовке
   var keepScroll={};
   document.querySelectorAll("#board .col").forEach(function(col){
@@ -640,6 +651,7 @@ function renderBoard(){
     var ck=catIds(cid);
     var all=ads.filter(function(a){
       if(a.price_eur==null||!ck[a.category_id]) return false;
+      if(ckF&&!ckF[a.category_id]) return false;
       if(favOn&&!FAV[a.id]) return false;
       if(q&&(a.title+" "+a.descr+" "+a.location).toLowerCase().indexOf(q)<0) return false;
       if(!sellerOk(a)||!priceOk(a)) return false;
@@ -827,7 +839,10 @@ function toggleFav(id){
     if(x&&x._favArch) FAV[id]._favArch=1;
   }
   favSave();
-  document.querySelectorAll(".favbtn[data-id='"+cssEsc(String(id))+"']").forEach(function(b){ b.classList.toggle("on",!!FAV[id]); });
+  document.querySelectorAll(".favbtn[data-id='"+cssEsc(String(id))+"']").forEach(function(b){
+    b.classList.toggle("on",!!FAV[id]);
+    b.title=FAV[id]?"Убрать из избранного":"В избранное ★";
+  });
   if(favOn) render();
 }
 $("grid").addEventListener("click",function(ev){
@@ -857,7 +872,8 @@ function histAdd(id,views){
     if(!last||last[1]!==views){ arr.push([Date.now(),views]); }
     H[id]=arr.slice(-48);
     var ks=Object.keys(H);
-    if(ks.length>900){ ads.slice(0,900).forEach(function(a){ }); ks.forEach(function(k){ if(!ads.find(function(x){return x.id===k;})) delete H[k]; }); }
+    if(ks.length>900){ var live={}; ads.forEach(function(a){ live[a.id]=1; });
+      ks.forEach(function(k){ if(!live[k]) delete H[k]; }); }
     localStorage.setItem("kl_hist",JSON.stringify(H));
   }catch(e){}
 }
@@ -885,6 +901,7 @@ function fillSheet(a){
   var chips='<span class="chip live">● Активно</span>';
   chips+='<span class="chip">'+(a.is_pro?"Магазин (PRO)":"Частный")+'</span>';
   if(selfB) chips+='<span class="chip selfb2">акк &lt; 2 дн — саморег</span>';
+  if(a._favArch) chips+='<span class="chip selfb2" style="color:var(--gold);border-color:rgba(224,179,60,.4)">★ в архиве избранного — объявление ушло из выдачи</span>';
   if(a.member_since) chips+='<span class="chip">на сайте с '+a.member_since.split("-").reverse().join(".")+'</span>';
   if(a.location) chips+='<span class="chip">'+ico("pin")+esc(a.location)+'</span>';
   chips+='<span class="chip">'+ico("clock")+esc(relTime(a))+'</span>';
@@ -917,14 +934,14 @@ function fillSheet(a){
         '</div></div></div>'+
       '<div class="sh-sec"><div class="h">ОПИСАНИЕ</div><div class="sh-descr" id="shD">'+descr+'</div></div>'+
     '</div>'+
-    '<div class="sh-bar">'+favBtn(a)+'<button class="rfrsh" id="shR" title="Обновить данные: просмотры, продавец, скорость"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>'+
+    '<div class="sh-bar">'+favBtn(a)+(a._favArch?'':'<button class="rfrsh" id="shR" title="Обновить данные: просмотры, продавец, скорость"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>')+
       ((TGBOT&&a.id)?'<a class="sh-tg" href="https://t.me/'+TGBOT+'?start='+esc(a.id)+'" target="_blank" rel="noopener" title="Выгрузить карточку в Telegram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>В Telegram</a>':'')+
       '<button class="sh-go" id="shGo">На Kleinanzeigen&nbsp;↗</button></div>';
   $("sheet").scrollTop=keepScroll;
   var gn=$("sheet").querySelector(".galn");
   if(gn&&keepGal) gn.scrollLeft=keepGal;
   $("shX").onclick=closeCard;
-  $("shR").onclick=function(){ refreshAd(a.id,this); };
+  if($("shR")) $("shR").onclick=function(){ refreshAd(a.id,this); };
   $("shGo").onclick=function(){ window.open(a.url,"_blank","noopener"); };
   wireGal();
 }
@@ -966,6 +983,7 @@ function updDots(){
 }
 function openCard(id){
   var x=ads.find(function(a2){ return String(a2.id)===String(id); });
+  if(!x&&FAV[id]){ x=JSON.parse(JSON.stringify(FAV[id])); x._favArch=1; }   // карточка ушла из выдачи — берём копию из избранного
   if(!x) return;
   ovAd=x; ovImgs=[]; ovSlide=0;
   fillSheet(x);
