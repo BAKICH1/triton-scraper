@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23131316'/%3E%3Cpath d='M12 5.5v13M7 5.5v5a5 5 0 0 0 10 0v-5' stroke='%23ffffff' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230f766e'/%3E%3Cpath d='M12 5.5v13M7 5.5v5a5 5 0 0 0 10 0v-5' stroke='%23ffffff' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
 <title>Triton Scraper — монитор Kleinanzeigen</title>
 <style>
 :root{
@@ -13,7 +13,7 @@
   --chipbg:#f1f2f6;
   --live:#0c8a4d; --err:#cc3f3f; --warn:#a97b00;
   --ink:#16181d; --inktext:#ffffff;
-  --acc:#2f6bff; --acc2:#1f47d6; --acc-soft:rgba(47,107,255,.08); --acc-ring:rgba(47,107,255,.16);
+  --acc:#0f766e; --acc2:#115e59; --acc-soft:rgba(15,118,110,.09); --acc-ring:rgba(15,118,110,.20);
   --tg1:#2ba3e8; --tg2:#1c86cf; --gold:#e0b33c;
   --scroll:#c9ccd6; --headbg:rgba(255,255,255,.88);
   --focusring:var(--acc-ring); --cardhover:#c9cdd8;
@@ -26,15 +26,16 @@ html.dark{
   --text:#edeff4; --muted:#949aa8; --dim:#6b7180; --chipbg:#1d2029;
   --live:#6fd59f; --err:#e07a7a; --warn:#d8c37a;
   --ink:#f2f3f7; --inktext:#0b0c10;
-  --acc:#5b8cff; --acc2:#3d6df0; --acc-soft:rgba(91,140,255,.10); --acc-ring:rgba(91,140,255,.22);
+  --acc:#2fbfae; --acc2:#0f8f81; --acc-soft:rgba(47,191,174,.10); --acc-ring:rgba(47,191,174,.24);
   --tg1:#33a8e8; --tg2:#1f88cc; --gold:#e0b33c;
   --scroll:#313644; --headbg:rgba(11,12,16,.88);
-  --focusring:rgba(91,140,255,.20); --cardhover:#3a4150;
+  --focusring:rgba(47,191,174,.22); --cardhover:#3a4150;
   --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 36px -10px rgba(0,0,0,.55);
   --shadow2:0 2px 10px rgba(0,0,0,.5),0 36px 90px -16px rgba(0,0,0,.7);
 }
 *{box-sizing:border-box}
 ::selection{background:var(--acc);color:#fff}
+html.dark ::selection{color:#06231f}
 html{scrollbar-color:var(--scroll) transparent}
 ::-webkit-scrollbar{width:10px;height:10px}
 ::-webkit-scrollbar-thumb{background:var(--scroll);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
@@ -48,7 +49,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 /* ---------- шапка ---------- */
 header{position:sticky;top:0;z-index:50;background:var(--headbg);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:0 28px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;height:64px}
 .logo{display:flex;align-items:center;gap:11px;font-weight:750;font-size:14.5px;letter-spacing:.2px;white-space:nowrap}
-.logo .mark{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:inline-flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 5px 14px -5px rgba(47,107,255,.55),inset 0 1px 0 rgba(255,255,255,.25)}
+.logo .mark{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:inline-flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 5px 14px -5px rgba(15,118,110,.55),inset 0 1px 0 rgba(255,255,255,.25)}
 .logo .mark svg{width:16px;height:16px}
 .logo .sub{color:var(--dim);font-weight:450;font-size:12px;margin-left:2px;display:none}
 @media(min-width:900px){.logo .sub{display:inline}}
@@ -135,7 +136,7 @@ main{padding:22px 28px 80px}
 .body{padding:13px 15px 14px;display:flex;flex-direction:column;gap:8px;flex:1}
 .title{font-weight:600;font-size:13.5px;line-height:1.42;color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:38px}
 .chip{position:absolute;top:9px;border-radius:999px;font-size:9.5px;font-weight:750;letter-spacing:.8px;padding:3.5px 9px;z-index:2}
-.chip.new{left:9px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;box-shadow:0 4px 12px -4px rgba(47,107,255,.6)}
+.chip.new{left:9px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;box-shadow:0 4px 12px -4px rgba(15,118,110,.6)}
 .chip.self{left:9px;top:36px;background:rgba(224,179,60,.95);color:#231a02;border:1px solid rgba(255,255,255,.4)}
 .chip.pro{right:9px;background:rgba(17,19,24,.62);border:1px solid rgba(255,255,255,.16);color:#fff;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .pr{display:flex;align-items:center;flex-wrap:wrap;row-gap:6px;gap:7px;margin-top:auto}
