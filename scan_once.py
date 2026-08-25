@@ -39,10 +39,12 @@ def enrich_member_since(limit: int = 150, delay: float = 1.0, batch: int = 25,
     в любой момент без потери наработанного. Если прокси мёртв — не жжём
     цикл таймаутами, выходим и попробуем в следующем.
     """
+    import json as _json
     import sqlite3
     import urllib.error
     import time as _time
     from datetime import datetime, timezone, timedelta
+    json = _json
 
     conn = sqlite3.connect(db.DB_PATH)
     t0 = _time.monotonic()
@@ -50,7 +52,7 @@ def enrich_member_since(limit: int = 150, delay: float = 1.0, batch: int = 25,
     proxy_ok = True
     f = scraper.Fetcher(min_delay=delay, timeout=15)
     fp = scraper.Fetcher(min_delay=1.0, timeout=12)   # мёртвый прокси не ждём 25с
-    done = got = 0
+    done = got = got_descr = got_gal = 0
     batch_i = 0
 
     def stopped():
@@ -65,9 +67,11 @@ def enrich_member_since(limit: int = 150, delay: float = 1.0, batch: int = 25,
         order = "DESC" if batch_i < 3 else "ASC"
         rows = conn.execute(
             f"""SELECT id,url,ms_tries FROM ads
-               WHERE url!='' AND ms_tries<3 AND first_seen>=?
-                 AND (member_since IS NULL OR (member_since='' AND first_seen>=?))
-               ORDER BY ms_tries ASC, first_seen {order} LIMIT ?""",
+               WHERE url!='' AND first_seen>=?
+                 AND (ms_tries<3 OR descr_full IS NULL)
+                 AND (member_since IS NULL OR (member_since='' AND first_seen>=?)
+                      OR descr_full IS NULL)
+               ORDER BY ms_tries ASC, descr_full IS NULL DESC, first_seen {order} LIMIT ?""",
             (since, retry_since, min(batch, limit - done))).fetchall()
         if not rows:
             break
@@ -110,14 +114,23 @@ def enrich_member_since(limit: int = 150, delay: float = 1.0, batch: int = 25,
             if not html:
                 continue
             ms = scraper.parse_member_since(html)
+            descr = scraper.parse_descr_full(html)
+            gal = scraper.parse_gallery(html)
             with conn:                          # коммит сразу — наработанное не теряем
                 if ms:
                     conn.execute("UPDATE ads SET member_since=?, ms_tries=3 WHERE id=?",
                                  (ms, ad_id))
                     got += 1
-                else:
+                elif (tries or 0) < 3:
                     conn.execute("UPDATE ads SET member_since='', ms_tries=? WHERE id=?",
                                  ((tries or 0) + 1, ad_id))
+                if descr:
+                    conn.execute("UPDATE ads SET descr_full=? WHERE id=?", (descr, ad_id))
+                    got_descr += 1
+                if gal:
+                    conn.execute("UPDATE ads SET imgs=? WHERE id=?",
+                                 (json.dumps(gal, ensure_ascii=False), ad_id))
+                    got_gal += 1
             done += 1
         batch_i += 1
 
@@ -125,7 +138,8 @@ def enrich_member_since(limit: int = 150, delay: float = 1.0, batch: int = 25,
     route = ("напрямую" if direct_ok else
              ("прямо+прокси" if proxy_ok else "напрямую (прокси недоступен)"))
     if done or not direct_ok:
-        print(f"самореги: попыток {done}, дат найдено {got}, маршрут: {route} "
+        print(f"самореги: попыток {done}, дат {got}, описаний {got_descr}, "
+              f"галерей {got_gal}, маршрут: {route} "
               f"({_time.monotonic() - t0:.0f} c)", flush=True)
     return got
 
