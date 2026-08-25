@@ -62,6 +62,12 @@ def init():
     );
     CREATE TABLE IF NOT EXISTS categories(id INTEGER PRIMARY KEY, slug TEXT, name TEXT, parent INTEGER);
     CREATE TABLE IF NOT EXISTS kv(key TEXT PRIMARY KEY, value TEXT);
+    CREATE TABLE IF NOT EXISTS views_hist(
+        ad_id TEXT NOT NULL,
+        ts TEXT NOT NULL,
+        views INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_vh_ad ON views_hist(ad_id, ts);
     CREATE TABLE IF NOT EXISTS staged_ads(
         id TEXT PRIMARY KEY,
         payload TEXT NOT NULL,          -- JSON объявления целиком
@@ -209,13 +215,26 @@ def TOP_PARENT_IDS():
 # ------------------------------- Просмотры -------------------------------
 
 def update_views(ad_id, views):
-    """Обновляет счётчик, сохраняя предыдущий замер — по паре считаем скорость роста."""
+    """Обновляет счётчик, сохраняя предыдущий замер — по паре считаем скорость роста.
+
+    Каждое изменение пишется в views_hist — из неё считаем прирост
+    за 20 минут / 1 / 2 / 4 / 8 часов."""
+    now = _iso()
     with _lock:
         row = _conn.execute("SELECT views, views_at FROM ads WHERE id=?", (ad_id,)).fetchone()
         prev, prev_at = (row["views"], row["views_at"]) if row else (None, None)
         _conn.execute(
             "UPDATE ads SET views_prev=?, views_prev_at=?, views=?, views_at=? WHERE id=?",
-            (prev, prev_at, views, _iso(), ad_id))
+            (prev, prev_at, views, now, ad_id))
+        if views != prev:   # точка истории — только когда счётчик реально двинулся
+            _conn.execute("INSERT INTO views_hist(ad_id,ts,views) VALUES(?,?,?)", (ad_id, now, views))
+        _conn.commit()
+
+
+def prune_views_hist(hours=24):
+    """История нужна для окон прироста до 8 часов — сутки с запасом."""
+    with _lock:
+        _conn.execute("DELETE FROM views_hist WHERE ts < datetime('now', ?)", (f"-{hours} hours",))
         _conn.commit()
 
 
