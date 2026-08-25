@@ -448,19 +448,42 @@ var PROXIES=[
   function(u){return "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(u);}
 ];
 var goodProxy=-1, lastFetch=0;
-function fetchText(url,timeout){
+function fetchText(url,timeout,urgent){
+  var t=timeout||12000;
   var order=[]; if(goodProxy>=0) order.push(goodProxy);
   for(var i=0;i<PROXIES.length;i++) if(i!==goodProxy) order.push(i);
-  var idx=0;
-  function tryNext(){
-    if(idx>=order.length) return Promise.reject("all proxies failed");
-    var pi=order[idx++];
-    var ctl=new AbortController(), to=setTimeout(function(){ctl.abort();},timeout||12000);
-    return fetch(PROXIES[pi](url),{signal:ctl.signal}).then(function(r){
-      clearTimeout(to); if(!r.ok) throw 0; return r.text();
-    }).then(function(t){ goodProxy=pi; return t; }).catch(function(){ return tryNext(); });
+  if(!urgent){            // обычный режим: по очереди, бережно
+    var idx=0;
+    function tryNext(){
+      if(idx>=order.length) return Promise.reject("all proxies failed");
+      var pi=order[idx++];
+      var ctl=new AbortController(), to=setTimeout(function(){ctl.abort();},t);
+      return fetch(PROXIES[pi](url),{signal:ctl.signal}).then(function(r){
+        clearTimeout(to); if(!r.ok) throw 0; return r.text();
+      }).then(function(x){ goodProxy=pi; return x; }).catch(function(){ return tryNext(); });
+    }
+    return tryNext();
   }
-  return tryNext();
+  // срочный режим (карточка): стартуем лучший прокси, через 2.6с/5.2с подключаем
+  // остальные параллельно — побеждает первый ответивый, остальных обрываем
+  return new Promise(function(resolve,reject){
+    var ctl=new AbortController();
+    var to=setTimeout(function(){ctl.abort();},t);
+    var started=0, errors=0, settled=false, total=order.length;
+    function fin(fn,arg){ if(settled) return; settled=true; clearTimeout(to);
+      try{ctl.abort();}catch(e){} fn(arg); }
+    function launch(){
+      if(started>=total||settled) return;
+      var pi=order[started++];
+      fetch(PROXIES[pi](url),{signal:ctl.signal}).then(function(r){
+        if(!r.ok) throw 0; return r.text();
+      }).then(function(x){ goodProxy=pi; fin(resolve,x); },
+             function(){ errors++; if(errors>=total) fin(reject,"all proxies failed"); });
+    }
+    launch();
+    setTimeout(function(){ if(!settled) launch(); },1800);
+    setTimeout(function(){ if(!settled) launch(); },4000);
+  });
 }
 
 /* ===== Состояние ===== */
@@ -805,12 +828,12 @@ function refreshAd(id, btn){
   if(!a||!btn||btn.classList.contains("busy")) return;
   btn.classList.add("busy"); btn.classList.remove("err");
   var ok1=false, ok2=false;
-  var pVac=fetchText("https://www.kleinanzeigen.de/s-vac-inc-get.json?adId="+encodeURIComponent(a.id), 12000)
+  var pVac=fetchText("https://www.kleinanzeigen.de/s-vac-inc-get.json?adId="+encodeURIComponent(a.id), 12000, true)
     .then(function(t){ var j=JSON.parse(t);
       if(j&&j.numVisits!=null){ a.views=+j.numVisits; ok1=true;
         var am=ageMin(a); if(am>=2) a.vr=Math.round(a.views/am*10)/10; } })
     .catch(function(){});
-  var pPage=fetchText(a.url, 20000)
+  var pPage=fetchText(a.url, 20000, true)
     .then(function(h){
       var m=h.match(/Aktiv\s+seit\s+(\d{2})\.(\d{2})\.(\d{4})/);
       if(m){ a.member_since=m[3]+"-"+m[2]+"-"+m[1]; ok2=true; }
@@ -1019,9 +1042,33 @@ document.addEventListener("keydown",function(e){ if(e.key==="Escape") closeCard(
 
 /* асинхронное обогащение карточки: все фото, полное описание, продавец */
 var ovBusy={};
+/* кэш обогащения: дата регистрации, описание, галерея — переживают сессию */
+function enrGet(id){
+  try{ var e=(JSON.parse(localStorage.getItem("kl_enrich")||"{}"))[id];
+    return (e&&Date.now()-e.t<48*36e5)?e:null; }catch(err){ return null; }
+}
+function enrPut(id,e){
+  try{
+    var C=JSON.parse(localStorage.getItem("kl_enrich")||"{}");
+    C[id]={t:Date.now(),ms:e.ms||null,d:e.d||null,imgs:e.imgs||[]};
+    var ks=Object.keys(C);
+    if(ks.length>200){ ks.sort(function(x,y){return C[x].t-C[y].t;});
+      ks.slice(0,ks.length-200).forEach(function(k){delete C[k];}); }
+    localStorage.setItem("kl_enrich",JSON.stringify(C));
+  }catch(err){}
+}
 function enrichCard(a){
-  if(ovBusy[a.id]) return; ovBusy[a.id]=1;
-  fetchText(a.url,20000).then(function(h){
+  if(ovBusy[a.id]) return;
+  var c=enrGet(a.id);
+  if(c){   // мгновенно из кэша
+    if(c.ms&&!a.member_since) a.member_since=c.ms;
+    if(c.d&&!a.descr_full) a.descr_full=c.d;
+    if(c.imgs&&c.imgs.length&&!ovImgs.length){ ovImgs=c.imgs.slice(0,10); ovSlide=0; }
+    fillSheet(a);
+    if(c.ms&&c.d&&c.imgs&&c.imgs.length) return;   // всё есть — сеть не нужна
+  }
+  ovBusy[a.id]=1;
+  fetchText(a.url,20000,true).then(function(h){
     if(ovAd!==a) return;
     var seen={},urls=[];
     (h.match(/img\.kleinanzeigen\.de\/api\/v1\/prod-ads\/images\/[0-9a-f]{2}\/[0-9a-f-]{36}/g)||[]).forEach(function(m){
@@ -1035,6 +1082,7 @@ function enrichCard(a){
     var d=h.match(/class="boxedarticle--description[^"]*"[^>]*>([\s\S]*?)<\/p>/);
     if(d){ var txt=d[1].replace(/<br\s*\/?>/g,"\n").replace(/<[^>]+>/g,"").replace(/\s+\n/g,"\n").replace(/[ \t]+/g," ").trim();
       if(txt){ a.descr_full=txt.slice(0,1200); } }
+    enrPut(a.id,{ms:a.member_since||null,d:a.descr_full||null,imgs:ovImgs||[]});
     fillSheet(a);
     histAdd(a.id,a.views);
   }).catch(function(){}).then(function(){ delete ovBusy[a.id]; });
