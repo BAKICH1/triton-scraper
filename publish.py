@@ -107,8 +107,8 @@ def collect_ads(limit=500, board_cats=(161, 80, 153, 192), board_hours=6, board_
         ids.add(r["id"])
         a = dict(r) | {"cat_name": cats.get(r["category_id"], ""), "vr": _view_rate(r)}
         a["descr"] = (a["descr"] or "")[:140] if is_feed else ""
-        for k in ("views_prev", "views_prev_at", "views_at"):  # служебное наружу не отдаём
-            a.pop(k, None)
+        for k in ("views_prev_at", "views_at"):  # служебное наружу не отдаём
+            a.pop(k, None)   # views_prev нужен клиенту: прирост за цикл
         ads.append(a)
 
     for r in rows:
