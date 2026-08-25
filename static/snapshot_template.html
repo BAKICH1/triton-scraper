@@ -160,9 +160,10 @@ body.notg .tgbtn,body.notg .sh-tg{display:none}
 @media(min-width:640px){.sheet{border-radius:24px}}
 .sh-top{position:sticky;top:0;z-index:3;background:var(--headbg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:14px 52px 12px 18px;border-bottom:1px solid var(--border)}
 .sh-top .t{font-size:16px;font-weight:750;line-height:1.35}
-.sh-x{position:absolute;right:11px;top:11px;width:32px;height:32px;border:1px solid var(--border);border-radius:10px;background:var(--panel);color:var(--muted);cursor:pointer;font-size:15px;line-height:1;font-weight:550}
+.sh-x{position:absolute;right:12px;top:12px;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:1px solid var(--border);border-radius:11px;background:var(--panel);color:var(--muted);cursor:pointer;transition:transform .2s,color .15s,border-color .15s}
+.sh-x svg{width:15px;height:15px;display:block;pointer-events:none}
 .sh-x:hover{color:var(--text);border-color:var(--border-hi);transform:rotate(90deg)}
-.sh-x,.sh-x:hover{transition:.2s}
+.sh-x:active{transform:rotate(90deg) scale(.92)}
 .sh-gal{position:relative;background:#0e0f13;aspect-ratio:4/3;overflow:hidden}
 .sh-gal img{width:100%;height:100%;object-fit:cover;display:block}
 .sh-gal .galn{position:absolute;inset:0;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
@@ -896,7 +897,7 @@ function fillSheet(a){
   var descr=esc(a.descr||"Полное описание подгружается…");
   if(a.descr&&a.descr.length>=140) descr+="…";
   $("sheet").innerHTML=
-    '<div class="sh-top"><div class="t">'+esc(a.title)+'</div><button class="sh-x" id="shX">✕</button></div>'+
+    '<div class="sh-top"><div class="t">'+esc(a.title)+'</div><button class="sh-x" id="shX" title="Закрыть (Esc)" aria-label="Закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>'+
     '<div class="sh-gal" id="shGal">'+galHtml()+'</div>'+
     '<div class="sh-body">'+
       '<div class="sh-price">'+price+(a.negotiable?'<span class="ptag">VB · торг</span>':'')+'</div>'+
