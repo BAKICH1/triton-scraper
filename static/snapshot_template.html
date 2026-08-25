@@ -64,6 +64,7 @@ header{position:sticky;top:0;z-index:50;background:var(--headbg);backdrop-filter
 .spacer{flex:1}
 button{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:11px;padding:8px 14px;font-size:12.5px;cursor:pointer;transition:.16s;font-family:inherit;font-weight:550}
 button:hover{border-color:var(--border-hi);color:var(--text)}
+#btnScan.busy{opacity:.55;pointer-events:none}
 #btnScan{background:var(--ink);color:var(--inktext);border-color:transparent;font-weight:700;box-shadow:0 1px 2px rgba(16,24,40,.10)}
 #btnScan:hover{border-color:transparent;color:var(--inktext);transform:translateY(-1px);box-shadow:0 6px 16px -6px rgba(16,24,40,.35)}
 #btnScan:active{transform:translateY(0)}
@@ -99,6 +100,7 @@ input,select{background:var(--panel);border:1px solid var(--border);color:var(--
 input::placeholder{color:var(--dim)}
 input:focus,select:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 3px var(--focusring)}
 input[type=text]{min-width:180px;flex:1;max-width:none}
+.filters.sub input[type=text]{min-width:0;flex:0 0 84px}
 select{appearance:none;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236f6f78' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:30px;cursor:pointer}
 
 /* ---------- доска ---------- */
@@ -226,6 +228,8 @@ body.notg .tgbtn,body.notg .sh-tg{display:none}
 .meta .cat{color:var(--muted)}
 .empty{text-align:center;color:var(--muted);padding:90px 20px}
 .empty b{display:block;font-size:16px;color:var(--text);margin-bottom:6px;font-weight:700}
+.empty-reset{margin-top:18px;background:var(--ink);color:var(--inktext);border:none;border-radius:11px;padding:9px 20px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:.16s}
+.empty-reset:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
 footer{padding:26px 28px;color:var(--dim);font-size:11.5px;text-align:center;border-top:1px solid var(--border);line-height:1.8}
 
 /* ===== Широкие экраны: контент по центру ===== */
@@ -330,7 +334,7 @@ footer{padding:26px 28px;color:var(--dim);font-size:11.5px;text-align:center;bor
   <div class="ovl" id="ovl">
     <div class="sheet" id="sheet"></div>
   </div>
-  <div class="empty" id="empty" style="display:none"><b style="display:block">Ничего не найдено</b>Измените фильтры или нажмите «Обновить».</div>
+  <div class="empty" id="empty" style="display:none"><b style="display:block">Ничего не найдено</b>Измените фильтры или нажмите «Обновить».<button class="empty-reset" id="resetF" type="button">Сбросить фильтры</button></div>
 </main>
 
 <footer>Triton Scraper · данные kleinanzeigen.de · обновление ~2 мин, страница подхватывает новое сама · ⭐ избранное хранится в вашем браузере</footer>
@@ -584,7 +588,7 @@ function catIds(cid){
 
 /* ===== Лента ===== */
 function renderFeed(){
-  var q=$("fq").value.toLowerCase(), ck=$("fcat").value?catIds($("fcat").value):null,
+  var q=$("fq").value.trim().toLowerCase(), ck=$("fcat").value?catIds($("fcat").value):null,
       sort=$("fsort").value,
       hot=$("fhot").classList.contains("on"),
       warm=$("fwarm").classList.contains("on"),
@@ -622,11 +626,12 @@ function renderFeed(){
   var em=$("empty");
   if(tab==="feed"&&out.length===0){
     var nf=Object.keys(FAV).length;
-    em.innerHTML=(favOn&&nf===0)
+    em.innerHTML=((favOn&&nf===0)
       ?'<b style="display:block">В избранном пока пусто</b>Нажимай ★ на карточках — они сохранятся здесь, даже когда уйдут с площадки.'
       :(favOn&&nf>0
         ?'<b style="display:block">Под текущими фильтрами в избранном ничего нет</b>Ослабь фильтры или добавь ещё ★.'
-        :'<b style="display:block">Ничего не найдено</b>Измените фильтры или нажмите «Обновить».');
+        :'<b style="display:block">Ничего не найдено</b>Измените фильтры или нажмите «Обновить».'))+
+      '<button class="empty-reset" id="resetF" type="button">Сбросить фильтры</button>';
     em.style.display="block";
   } else em.style.display="none";
 }
@@ -636,7 +641,7 @@ var colLimits={};
 function renderBoard(){
   $("feedMore").style.display="none";
   var html="";
-  var q=$("fq").value.toLowerCase(), sort=$("fsort").value;
+  var q=$("fq").value.trim().toLowerCase(), sort=$("fsort").value;
   var hot=$("fhot").classList.contains("on"), warm=$("fwarm").classList.contains("on"), self=$("fself").classList.contains("on");
   var ckF=$("fcat").value?catIds($("fcat").value):null;
   var anyFilter=!!q||!!$("fmin").value||!!$("fmax").value||!!$("fseller").value||!!$("fcat").value||hot||warm||self||favOn;
@@ -732,7 +737,7 @@ function setStatus(m){
 async function scan(manual){
   var now=Date.now();
   if(!manual&&now-lastFetch<45000) return;
-  lastFetch=now; setStatus("fetching");
+  lastFetch=now; setStatus("fetching"); $("btnScan").classList.add("busy");
   var got=0, fetchedAny=false;
   var targets=[null].concat(tab==="board"?cols:[]);
   for(var k=0;k<targets.length;k++){
@@ -754,6 +759,7 @@ async function scan(manual){
   } else { ads.forEach(function(a){seen[a.id]=1;}); saveSeen(); }
   liveOk=fetchedAny;
   setStatus(liveOk?"live":"err");
+  $("btnScan").classList.remove("busy");
   render(); updTitle();
 }
 function updTitle(){
@@ -785,6 +791,14 @@ $("fself").onclick=function(){
   render();
 };
 $("feedMore").onclick=function(){ feedCap+=150; render(); };
+$("empty").addEventListener("click",function(e){
+  if(e.target.id!=="resetF") return;
+  $("fq").value=""; $("fmin").value=""; $("fmax").value="";
+  $("fcat").value=""; $("fseller").value=""; $("fsort").value="first_seen";
+  ["fhot","fwarm","fself"].forEach(function(id){ var b2=$(id); if(b2.classList.contains("on")) b2.click(); });
+  if(favOn) $("ffav").click();
+  render();
+});
 /* обновление одного объявления: просмотры (s-vac) + продавец (страница) */
 function refreshAd(id, btn){
   var a = ads.find(function(x){ return String(x.id)===String(id); });
@@ -911,8 +925,7 @@ function fillSheet(a){
   var price=a.price_eur===0?'<span class="pval" style="color:var(--live)">Бесплатно</span>':
     (a.price_eur!=null?'<span class="pval">'+fmtEur(a.price_eur)+' €</span>':'<span class="pval" style="color:var(--dim)">цена не указана</span>');
   var initials=(a.title||"?").replace(/[^A-Za-zА-Яа-я0-9 ]/g,"").trim().split(/\s+/).map(function(w){return (w[0]||"");}).join("").slice(0,2).toUpperCase()||"?";
-  var descr=esc(a.descr||"Полное описание подгружается…");
-  if(a.descr&&a.descr.length>=140) descr+="…";
+  var descr=a.descr_full?esc(a.descr_full):(esc(a.descr||"")+(a.descr&&a.descr.length>=140?"…":""))||"Полное описание подгружается…";
   $("sheet").innerHTML=
     '<div class="sh-top"><div class="t">'+esc(a.title)+'</div><button class="sh-x" id="shX" title="Закрыть (Esc)" aria-label="Закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>'+
     '<div class="sh-gal" id="shGal">'+galHtml()+'</div>'+
@@ -960,7 +973,7 @@ function galHtml(){
   var src=ovImgs.length?ovImgs:(ovAd&&ovAd.img?[ovAd.img]:[]);
   if(!src.length) return '<img src="'+PH+'" alt="">';
   var h='<div class="galn">'+src.map(function(u){
-    return '<img loading="lazy" src="'+esc(u)+'" onerror="this.src='+PH+'">';
+    return '<img loading="lazy" src="'+esc(u)+'" onerror="this.src=\''+PH+'\'">';
   }).join("")+'</div>';
   if(src.length>1){
     h+='<div class="gdot" id="shDots">'+src.map(function(_,i){ return '<i class="'+(i===0?"on":"")+'"></i>'; }).join("")+'</div>';
@@ -1020,9 +1033,8 @@ function enrichCard(a){
     var m=h.match(/Aktiv\s+seit\s+(\d{2})\.(\d{2})\.(\d{4})/);
     if(m){ a.member_since=m[3]+"-"+m[2]+"-"+m[1]; }
     var d=h.match(/class="boxedarticle--description[^"]*"[^>]*>([\s\S]*?)<\/p>/);
-    if(d){ var txt=d[1].replace(/<br\s*\/?>/g,"\n").replace(/<[^>]+>/g,"").replace(/\s+\n/g,"\n").trim();
-      if(txt){ var el=$("shD"); if(el) el.textContent=txt; } }
-    var pr=h.match(/user-profiles\/([^"\/?]+)/);
+    if(d){ var txt=d[1].replace(/<br\s*\/?>/g,"\n").replace(/<[^>]+>/g,"").replace(/\s+\n/g,"\n").replace(/[ \t]+/g," ").trim();
+      if(txt){ a.descr_full=txt.slice(0,1200); } }
     fillSheet(a);
     histAdd(a.id,a.views);
   }).catch(function(){}).then(function(){ delete ovBusy[a.id]; });
@@ -1086,6 +1098,7 @@ function freshChip(ts, ok){
   el.classList.toggle("stale", !ok||stale);
 }
 function refreshData(){
+  var wasBoot=booted;
   fetch("ads.json?"+Date.now(),{cache:"no-store"}).then(function(r){return r.json();}).then(function(d){
     if(d.tpl&&TPL&&d.tpl!==TPL){ location.reload(); return; }   // сменился шаблон — перезагрузимся
     if(d.ver===DATAV&&ads.length>=(d.ads||[]).length){ freshChip(d.ts,true); return; }
@@ -1099,10 +1112,16 @@ function refreshData(){
       Object.keys(HH).forEach(function(k){ if(!ids[k]) delete HH[k]; });
       localStorage.setItem("kl_hist",JSON.stringify(HH)); }catch(e){}
     if(booted){
-      var sfresh=d.ads.filter(function(a){ return !seen[a.id]&&!counted[a.id]&&selfOk(a); });
-      if(sfresh.length){ pendingNew+=sfresh.length; pendingSelf+=sfresh.length; beepSelf(); }
-      d.ads.forEach(function(a){ if(!seen[a.id]) counted[a.id]=1; });
+      // newcomers из ads.json: все идут в «новых», самореги — ещё и в свой бейдж
+      var freshL=d.ads.filter(function(a){ return !seen[a.id]&&!counted[a.id]; });
+      if(freshL.length){ pendingNew+=freshL.length; beep(); }
+      var sfresh=freshL.filter(selfOk);
+      if(sfresh.length){ pendingSelf+=sfresh.length; beepSelf(); }
+      freshL.forEach(function(a){ counted[a.id]=1; });
       if(Object.keys(counted).length>20000){ var nc={}; ads.forEach(function(a){ if(counted[a.id])nc[a.id]=1; }); counted=nc; }
+    }
+    if(!wasBoot){   // первая успешная загрузка = база: всё, что в ней есть, не «новое»
+      d.ads.forEach(function(a){ if(!seen[a.id]&&!counted[a.id]) counted[a.id]=1; });
     }
     booted=true;
     freshChip(d.ts,true); render(); updTitle();
