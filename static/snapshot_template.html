@@ -565,22 +565,46 @@ var colLimits={};
 function renderBoard(){
   $("feedMore").style.display="none";
   var html="";
+  var q=$("fq").value.toLowerCase(), sort=$("fsort").value;
+  var hot=$("fhot").classList.contains("on"), warm=$("fwarm").classList.contains("on"), self=$("fself").classList.contains("on");
+  var anyFilter=!!q||!!$("fmin").value||!!$("fmax").value||!!$("fseller").value||hot||warm||self;
+  // запомним прокрутку каждого столбца — не сбрасывать её при перерисовке
+  var keepScroll={};
+  document.querySelectorAll("#board .col").forEach(function(col){
+    var cid=col.getAttribute("data-cid"), cb=col.querySelector(".colbody");
+    if(cid&&cb) keepScroll[cid]=cb.scrollTop;
+  });
   cols.forEach(function(cid){
     var c=CATMAP[cid]; if(!c) return;
     var ck=catIds(cid);
-    var hot=$("fhot").classList.contains("on"), warm=$("fwarm").classList.contains("on"), self=$("fself").classList.contains("on");
-    var all=ads.filter(function(a){ return a.price_eur!=null&&ck[a.category_id]&&sellerOk(a)&&priceOk(a)&&((!hot&&!warm)||(hot&&hotOk(a))||(warm&&warmOk(a)))&&(!self||selfOk(a)); })
-               .sort(function(x,y){return String(y.posted_at||y.first_seen||"").localeCompare(String(x.posted_at||x.first_seen||""));});
+    var all=ads.filter(function(a){
+      if(a.price_eur==null||!ck[a.category_id]) return false;
+      if(q&&(a.title+" "+a.descr+" "+a.location).toLowerCase().indexOf(q)<0) return false;
+      if(!sellerOk(a)||!priceOk(a)) return false;
+      if((hot||warm)&&!(hot&&hotOk(a)||warm&&warmOk(a))) return false;
+      if(self&&!selfOk(a)) return false;
+      return true;
+    }).sort(function(x,y){return String(y.posted_at||y.first_seen||"").localeCompare(String(x.posted_at||x.first_seen||""));});
     if(hot) all.sort(function(x,y){return ageMin(x)-ageMin(y);});
+    else if(sort==="price_desc") all.sort(function(x,y){return (y.price_eur==null?-1:y.price_eur)-(x.price_eur==null?-1:x.price_eur);});
+    else if(sort==="price_asc") all.sort(function(x,y){return (x.price_eur==null?1e15:x.price_eur)-(y.price_eur==null?1e15:y.price_eur);});
     var lim=colLimits[cid]||25;
     var items=all.slice(0,lim);
-    html+='<div class="col"><h4>'+esc(c.name)+' <span class="cnt">'+all.length+'</span>'+
+    var emptyMsg=all.length?"":
+      (anyFilter?'<div style="color:var(--dim);font-size:11.5px;padding:6px 2px">Под текущими фильтрами ничего — ослабь фильтры</div>'
+                :'<div style="color:var(--dim);font-size:11.5px;padding:6px 2px">Пока ничего — обновится после следующего скана</div>');
+    html+='<div class="col" data-cid="'+cid+'"><h4>'+esc(c.name)+' <span class="cnt">'+all.length+'</span>'+
       '<button data-col="'+cid+'" title="Убрать столбец">✕</button></h4>'+
-      '<div class="colbody">'+(items.length?items.map(mini).join(""):'<div style="color:var(--dim);font-size:11.5px;padding:6px 2px">Пока ничего — обновится после следующего скана</div>')+
+      '<div class="colbody">'+(items.length?items.map(mini).join(""):emptyMsg)+
       (all.length>lim?'<button class="colmore" data-more="'+cid+'">Ещё '+(all.length-lim>25?25:all.length-lim)+' из '+all.length+'</button>':'')+
       '</div></div>';
   });
   $("board").innerHTML=html||'<div style="color:var(--dim)">Добавьте категории сверху</div>';
+  // вернуть прокрутку столбцов
+  document.querySelectorAll("#board .col").forEach(function(col){
+    var cid=col.getAttribute("data-cid"), cb=col.querySelector(".colbody");
+    if(cid&&cb&&keepScroll[cid]) cb.scrollTop=keepScroll[cid];
+  });
   $("board").querySelectorAll("button[data-col]").forEach(function(b){
     b.onclick=function(){ cols=cols.filter(function(x){return x!==+b.dataset.col;}); saveCols(); renderBoard(); renderColSel(); };
   });
