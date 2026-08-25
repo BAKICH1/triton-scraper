@@ -442,11 +442,14 @@ var ICO={
 function ico(n){return '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+ICO[n]+'</svg>';}
 
 /* ===== Прокси (опционально) ===== */
-var PROXIES=[
+var KLWORKER="__KLPROXY__";
+var PROXIES=[];
+if(KLWORKER) PROXIES.push(function(u){return KLWORKER+"?url="+encodeURIComponent(u);});
+PROXIES.push(
   function(u){return "https://api.allorigins.win/raw?url="+encodeURIComponent(u);},
   function(u){return "https://corsproxy.io/?url="+encodeURIComponent(u);},
   function(u){return "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(u);}
-];
+);
 var goodProxy=-1, lastFetch=0;
 function fetchText(url,timeout,urgent){
   var t=timeout||12000;
@@ -1021,7 +1024,9 @@ function openCard(id){
   var x=ads.find(function(a2){ return String(a2.id)===String(id); });
   if(!x&&FAV[id]){ x=JSON.parse(JSON.stringify(FAV[id])); x._favArch=1; }   // карточка ушла из выдачи — берём копию из избранного
   if(!x) return;
-  ovAd=x; ovImgs=[]; ovSlide=0;
+  ovAd=x;
+  ovImgs=(x.imgs&&x.imgs.length)?x.imgs.slice(0,10):[];   // серверная галерея — сразу
+  ovSlide=0;
   fillSheet(x);
   $("ovl").classList.add("open");
   document.body.style.overflow="hidden";
@@ -1065,8 +1070,8 @@ function enrichCard(a){
     if(c.d&&!a.descr_full) a.descr_full=c.d;
     if(c.imgs&&c.imgs.length&&!ovImgs.length){ ovImgs=c.imgs.slice(0,10); ovSlide=0; }
     fillSheet(a);
-    if(c.ms&&c.d&&c.imgs&&c.imgs.length) return;   // всё есть — сеть не нужна
   }
+  if(a.member_since&&a.descr_full&&ovImgs.length) return;   // сервер уже всё принёс — сеть не нужна
   ovBusy[a.id]=1;
   fetchText(a.url,20000,true).then(function(h){
     if(ovAd!==a) return;
@@ -1079,7 +1084,8 @@ function enrichCard(a){
       if(gn) gn.addEventListener("scroll",function(){ ovSlide=Math.round(gn.scrollLeft/Math.max(1,gn.scrollWidth/ovImgs.length)); updDots(); }); }
     var m=h.match(/Aktiv\s+seit\s+(\d{2})\.(\d{2})\.(\d{4})/);
     if(m){ a.member_since=m[3]+"-"+m[2]+"-"+m[1]; }
-    var d=h.match(/class="boxedarticle--description[^"]*"[^>]*>([\s\S]*?)<\/p>/);
+    var d=h.match(/id="viewad-description-text"[^>]*>([\s\S]*?)<\/p>/)
+           ||h.match(/class="boxedarticle--description[^"]*"[^>]*>([\s\S]*?)<\/p>/);
     if(d){ var txt=d[1].replace(/<br\s*\/?>/g,"\n").replace(/<[^>]+>/g,"").replace(/\s+\n/g,"\n").replace(/[ \t]+/g," ").trim();
       if(txt){ a.descr_full=txt.slice(0,1200); } }
     enrPut(a.id,{ms:a.member_since||null,d:a.descr_full||null,imgs:ovImgs||[]});
