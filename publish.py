@@ -122,7 +122,16 @@ def collect_ads(limit=500, board_cats=(161, 80, 153, 192), board_hours=6, board_
             hist.setdefault(h["ad_id"], []).append((h["ts"], h["views"]))
     except Exception:
         hist = {}
-    import bisect
+    # собственные пары замеров объявлений — тоже точки истории
+    # (мгновенно даёт каждому измеряемому объявлению окно между замерами)
+    for r0 in list(rows) + list(extra):
+        pts0 = hist.setdefault(r0["id"], [])
+        if r0["views_prev_at"] and r0["views_prev"] is not None:
+            pts0.append((r0["views_prev_at"], r0["views_prev"]))
+        if r0["views_at"] and r0["views"] is not None:
+            pts0.append((r0["views_at"], r0["views"]))
+        pts0.sort(key=lambda x: x[0])
+
     def growth(ad_id, views_now):
         pts = hist.get(ad_id)
         if not pts or views_now is None:
