@@ -103,13 +103,14 @@ def collect_ads(limit=500, board_cats=(161, 80, 153, 192), board_hours=6, board_
 
     def add(r, is_feed):
         if r["id"] in ids:
-            return
+            return None
         ids.add(r["id"])
         a = dict(r) | {"cat_name": cats.get(r["category_id"], ""), "vr": _view_rate(r)}
         a["descr"] = (a["descr"] or "")[:140] if is_feed else ""
         for k in ("views_prev_at", "views_at"):  # служебное наружу не отдаём
             a.pop(k, None)   # views_prev нужен клиенту: прирост за цикл
         ads.append(a)
+        return a
 
     # прирост просмотров за окна: 20м / 1ч / 2ч / 4ч / 8ч (по истории замеров)
     WINDOWS = ((20, "20"), (60, "60"), (120, "120"), (240, "240"), (480, "480"))
@@ -149,11 +150,13 @@ def collect_ads(limit=500, board_cats=(161, 80, 153, 192), board_hours=6, board_
         return out or None
 
     for r in rows:
-        add(r, True)
-        ads[-1]["gr"] = growth(r["id"], r["views"])
+        a = add(r, True)
+        if a is not None:
+            a["gr"] = growth(r["id"], r["views"])
     for r in extra:
-        add(r, False)
-        ads[-1]["gr"] = growth(r["id"], r["views"])
+        a = add(r, False)
+        if a is not None:
+            a["gr"] = growth(r["id"], r["views"])
     ads.sort(key=lambda a: a["first_seen"], reverse=True)
     total = conn.execute("SELECT COUNT(*) c FROM ads").fetchone()["c"]
     conn.close()
