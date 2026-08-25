@@ -208,6 +208,10 @@ class Monitor(threading.Thread):
                         traceback.print_exc()
                         time.sleep(5)
         self.new_in_last_scan = total_new
+        try:
+            db.prune_views_hist(24)   # история приростов: сутки с запасом
+        except Exception:
+            pass
         self.last_scan_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
         try:
             db.log_scan("ok" if not self.last_error else "warn", total_found, total_new, started_at=t0)
