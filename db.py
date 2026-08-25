@@ -62,6 +62,12 @@ def init():
     );
     CREATE TABLE IF NOT EXISTS categories(id INTEGER PRIMARY KEY, slug TEXT, name TEXT, parent INTEGER);
     CREATE TABLE IF NOT EXISTS kv(key TEXT PRIMARY KEY, value TEXT);
+    CREATE TABLE IF NOT EXISTS staged_ads(
+        id TEXT PRIMARY KEY,
+        payload TEXT NOT NULL,          -- JSON объявления целиком
+        posted_at TEXT,                 -- ждём, пока станет 20+ минут
+        staged_at TEXT
+    );
     """)
     _conn.commit()
     # миграции (идемпотентно)
@@ -82,6 +88,48 @@ def init():
             _conn.execute("INSERT INTO sources(type,value,label,pages,active,created_at) VALUES('global','','Вся Германия (все категории)',2,1,?)", (_iso(),))
             _conn.commit()
     return _conn
+
+
+# ------------------------------- Стейджинг молодых -------------------------------
+def stage_ads(ads_list):
+    """Отложить объявления моложе 20 минут — введём их в базу, когда созреют."""
+    import json as _json
+    now = _iso()
+    with _lock:
+        for a in ads_list:
+            try:
+                _conn.execute("INSERT OR IGNORE INTO staged_ads(id,payload,posted_at,staged_at) VALUES(?,?,?,?)",
+                              (a["id"], _json.dumps(a, ensure_ascii=False), a.get("posted_at"), now))
+            except Exception:
+                pass
+        # не копим балласт старше 2 суток
+        _conn.execute("DELETE FROM staged_ads WHERE staged_at < datetime('now','-2 days')")
+        _conn.commit()
+
+
+def promote_due(min_age_min=20.0):
+    """Ввести в основную базу отложенные объявления, достигшие min_age_min."""
+    import json as _json
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    with _lock:
+        rows = _conn.execute("SELECT id,payload,posted_at FROM staged_ads").fetchall()
+        due, ids = [], []
+        for r in rows:
+            try:
+                age = (now - datetime.fromisoformat(r["posted_at"])).total_seconds() / 60
+            except Exception:
+                age = None
+            if age is None or age >= min_age_min:
+                due.append(_json.loads(r["payload"]))
+                ids.append(r["id"])
+    if not due:
+        return 0
+    n, _ = upsert_ads(due, source="staged")
+    with _lock:
+        _conn.executemany("DELETE FROM staged_ads WHERE id=?", [(i,) for i in ids])
+        _conn.commit()
+    return n
 
 
 # ------------------------------- Объявления -------------------------------
