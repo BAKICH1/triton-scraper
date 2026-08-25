@@ -79,6 +79,43 @@ class Fetcher:
             self._last = time.monotonic()
 
 
+def parse_descr_full(html_text: str) -> str | None:
+    """Полное описание объявления (первый абзац boxedarticle--description)."""
+    import re as _re
+    m = _re.search(r'id="viewad-description-text"[^>]*>([\s\S]*?)</p>', html_text)
+    if not m:
+        m = _re.search(r'class="boxedarticle--description[^"]*"[^>]*>([\s\S]*?)</p>', html_text)
+    if not m:
+        return None
+    txt = (m.group(1)
+           .replace("<br>", "\n").replace("<br/>", "\n").replace("<br />", "\n")
+           .replace("</p>", "\n"))
+    txt = _re.sub(r"<[^>]+>", "", txt)
+    txt = _re.sub(r"[ \t]+\n", "\n", txt)
+    txt = _re.sub(r"[ \t]{2,}", " ", txt)
+    txt = txt.replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<") \
+             .replace("&gt;", ">").replace("&quot;", '"').replace("&#39;", "'")
+    txt = txt.strip()
+    return txt[:800] or None
+
+
+def parse_gallery(html_text: str) -> list[str]:
+    """URLы фото галереи (UUID имён) в исходном порядке, без дублей."""
+    import re as _re
+    seen: set[str] = set()
+    out: list[str] = []
+    for m in _re.finditer(r"img\.kleinanzeigen\.de/api/v1/prod-ads/images/"
+                          r"[0-9a-f]{2}/[0-9a-f-]{36}", html_text):
+        u = "https://" + m.group(0)
+        key = u.rsplit("/", 1)[-1]
+        if key not in seen:
+            seen.add(key)
+            out.append(u + "?rule=$_59.JPG")
+        if len(out) >= 10:
+            break
+    return out
+
+
 def parse_member_since(html_text: str) -> str | None:
     """Дата регистрации аккаунта продавца со страницы объявления.
 
