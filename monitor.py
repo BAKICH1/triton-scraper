@@ -158,6 +158,10 @@ class Monitor(threading.Thread):
     def _scan_round(self):
         t0 = datetime.now(timezone.utc).isoformat(timespec="seconds")
         total_new, total_found, errors = 0, 0, 0
+        try:   # созревшие 20+ минут — из стейджинга в базу
+            total_new += db.promote_due(20)
+        except Exception:
+            pass
         try:
             sources = db.list_sources(only_active=True)
         except Exception:
@@ -171,8 +175,9 @@ class Monitor(threading.Thread):
                     try:
                         html = self.fetcher.get(url)
                         ads = scraper.parse_listing(html)
-                        # моложе 20 минут не берём: до этого объявления «сырые»
-                        keep = []
+                        # моложе 20 минут не берём сразу: откладываем и введём,
+                        # когда исполнится 20 минут от публикации (иначе потеряем)
+                        keep, young = [], []
                         for ad in ads:
                             pt = ad.get("posted_at")
                             try:
@@ -180,8 +185,11 @@ class Monitor(threading.Thread):
                             except Exception:
                                 age = None
                             if age is not None and age < 20:
-                                continue
-                            keep.append(ad)
+                                young.append(ad)
+                            else:
+                                keep.append(ad)
+                        if young:
+                            db.stage_ads(young)
                         ads = keep
                         total_found += len(ads)
                         n_new, _ = db.upsert_ads(ads, source=src["type"])
