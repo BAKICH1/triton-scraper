@@ -761,6 +761,9 @@ function sparkline(pts){
     '<circle cx="'+last[0]+'" cy="'+last[1]+'" r="3" fill="#131316"/></svg>';
 }
 function fillSheet(a){
+  var keepScroll=$("sheet").scrollTop;
+  var keepGal=0, gn0=$("sheet").querySelector(".galn");
+  if(gn0) keepGal=gn0.scrollLeft;
   var selfB=selfOk(a);
   var chips='<span class="chip live">● Активно</span>';
   chips+='<span class="chip">'+(a.is_pro?"Магазин (PRO)":"Частный")+'</span>';
@@ -798,6 +801,9 @@ function fillSheet(a){
     '</div>'+
     '<div class="sh-bar">'+tgBtn(a)+'<button class="rfrsh" id="shR" title="Обновить данные"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>'+
       '<button class="sh-go" id="shGo">Открыть на Kleinanzeigen ↗</button></div>';
+  $("sheet").scrollTop=keepScroll;
+  var gn=$("sheet").querySelector(".galn");
+  if(gn&&keepGal) gn.scrollLeft=keepGal;
   $("shX").onclick=closeCard;
   $("shR").onclick=function(){ refreshAd(a.id,this); };
   $("shGo").onclick=function(){ window.open(a.url,"_blank","noopener"); };
