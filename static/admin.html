@@ -234,7 +234,8 @@ function renderRows(){
     });
     row.querySelector(".go").onclick=function(){
       var v=parseFloat(row.querySelector(".hrs").value);
-      if(!v||v<=0){ st("Введи часы (можно дробные, напр. 12 или 0.5)","err"); return; }
+      if(isNaN(v)||v<=0){ st("Введи часы (можно дробные, напр. 12 или 0.5)","err"); return; }
+      if(v>8760){ st("Слишком много: максимум 8760 ч (год)","err"); return; }
       grant(uid,v);
     };
     row.querySelector(".wipe").onclick=function(){ wipe(uid); };
@@ -307,11 +308,16 @@ async function loadAll(){
     var b=await fetch(SUPA.url+"/rest/v1/time_grants?select=user_id,valid_until,hours,created_at&order=created_at.desc&limit=1000",{headers:h(tok)});
     if(!b.ok) throw new Error("time_grants: HTTP "+b.status);
     GRANTS=await b.json();
-    if(!$("tbl")) viewPanel(); else { renderRows(); }
+    viewPanel();          // полный ре-рендер: статистика + строки + счётчик
     st("обновлено "+new Date().toLocaleTimeString("ru-RU"),"ok");
   }catch(e){ st(errRu(e),"err"); }
 }
+var BUSY={};   // uid -> идёт операция (защита от двойного клика)
 async function grant(uid,hours){
+  if(BUSY[uid]) return; BUSY[uid]=1;
+  try{ await grantInner(uid,hours); } finally{ delete BUSY[uid]; }
+}
+async function grantInner(uid,hours){
   var tok=await token(); if(!tok) return;
   var cur=userUntil(uid), base=Math.max(cur,Date.now());
   var until=new Date(base+hours*3600000).toISOString();
@@ -322,16 +328,20 @@ async function grant(uid,hours){
     if(!r.ok) throw new Error("HTTP "+r.status);
     var j=await r.json();
     GRANTS=GRANTS.concat(j);
-    renderRows(); st("Выдано +"+hours+" ч ✓","ok");
+    viewPanel(); st("Выдано +"+hours+" ч ✓","ok");
   }catch(e){ st(errRu(e),"err"); }
 }
 async function wipe(uid){
+  if(BUSY[uid]) return; BUSY[uid]=1;
+  try{ await wipeInner(uid); } finally{ delete BUSY[uid]; }
+}
+async function wipeInner(uid){
   var tok=await token(); if(!tok) return;
   try{
     var r=await fetch(SUPA.url+"/rest/v1/time_grants?user_id=eq."+uid,{method:"DELETE",headers:h(tok)});
     if(!r.ok) throw new Error("HTTP "+r.status);
     GRANTS=GRANTS.filter(function(g){ return g.user_id!==uid; });
-    renderRows(); st("Время обнулено","ok");
+    viewPanel(); st("Время обнулено","ok");
   }catch(e){ st(errRu(e),"err"); }
 }
 
