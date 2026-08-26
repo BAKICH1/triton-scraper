@@ -233,6 +233,25 @@ body.notg .tgbtn,body.notg .sh-tg{display:none}
 #btnAcc .em{font-weight:650;color:var(--text)}
 .accovl{position:fixed;inset:0;z-index:80;background:rgba(10,12,18,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:20px;animation:fadeIn .18s}
 .accovl.open{display:flex}
+.gate{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:22px;overflow:auto}
+.gate.off{display:none}
+.gcard{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow2);padding:26px 22px 20px;text-align:center;box-sizing:border-box}
+.glogo{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+.gtitle{font-size:19px;font-weight:800;letter-spacing:-.02em;color:var(--text)}
+.gsub{font-size:12.5px;color:var(--muted);margin:3px 0 18px}
+.gcard input{width:100%;font:inherit;font-size:14px;background:var(--panel2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:11px 12px;margin:0 0 9px;outline:none;box-sizing:border-box}
+.gcard input:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-ring)}
+.gbtn{width:100%;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;border:none;border-radius:11px;padding:11px;font-family:inherit;font-size:14px;font-weight:750;cursor:pointer;transition:.16s;box-shadow:0 6px 16px -6px rgba(15,118,110,.5)}
+.gbtn:hover{filter:brightness(1.07)}
+.gbtn:disabled{opacity:.55;pointer-events:none}
+.gst{font-size:13px;margin-top:11px;min-height:18px;color:var(--muted);text-align:center}
+.gst.ok{color:var(--live)} .gst.err{color:var(--err)}
+.gmail{font-weight:750;font-size:14.5px;word-break:break-all;color:var(--text)}
+.gmsg{font-size:13.5px;color:var(--warn);margin:8px 0 16px;line-height:1.5}
+.grow{display:flex;gap:8px}
+.grow .gbtn{flex:1.4;width:auto}
+.gbtn2{flex:1;background:var(--raised);border:none;border-radius:11px;padding:10px;font-family:inherit;font-size:13px;font-weight:650;cursor:pointer;color:var(--text)}
+.gfoot{font-size:11.5px;color:var(--dim);margin-top:18px}
 .acc{background:var(--panel);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow2);width:100%;max-width:360px;padding:22px;animation:shIn .28s cubic-bezier(.2,.9,.3,1)}
 .acc h3{margin:0 0 4px;font-size:16.5px;font-weight:800}
 .acc .sub{color:var(--dim);font-size:12px;margin-bottom:14px;line-height:1.5}
@@ -298,6 +317,25 @@ footer{padding:26px 28px;color:var(--dim);font-size:11.5px;text-align:center;bor
 </style>
 </head>
 <body>
+<div class="gate" id="gate">
+  <div class="gcard">
+    <div class="glogo"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v17M6 3.5v6.5a6 6 0 0 0 12 0V3.5"/></svg></div>
+    <div class="gtitle">Triton Scraper</div>
+    <div class="gsub">Kleinanzeigen — монитор объявлений</div>
+    <div id="gForm">
+      <input type="email" id="gMail" placeholder="Email" autocomplete="email">
+      <input type="password" id="gPass" placeholder="Пароль (от 6 символов)" autocomplete="current-password">
+      <button class="gbtn" id="gGo">Войти или создать</button>
+      <div class="gst" id="gSt"></div>
+    </div>
+    <div id="gWho" style="display:none">
+      <div class="gmail" id="gWhoMail"></div>
+      <div class="gmsg" id="gMsg"></div>
+      <div class="grow"><button class="gbtn" id="gRetry">Проверить ещё раз</button><button class="gbtn2" id="gOut">Выйти</button></div>
+    </div>
+    <div class="gfoot">доступ выдаёт администратор — по часам</div>
+  </div>
+</div>
 <header>
   <div class="logo">
     <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v17M6 3.5v6.5a6 6 0 0 0 12 0V3.5"/></svg></span>
@@ -1148,43 +1186,47 @@ function accRender(){
   }
   accSt("");
 }
-async function supaAuth(){
-  var m=$("accMail").value.trim(), p=$("accPass").value;
-  if(!m||!p){ accSt("Введи почту и пароль.","err"); return; }
-  if(p.length<6){ accSt("Пароль минимум 6 символов.","err"); return; }
-  var b=$("accGo"); b.disabled=true; accSt("");
+async function supaAuthCore(m,p,st){
+  if(!m||!p){ st("Введи почту и пароль.","err"); return false; }
+  if(p.length<6){ st("Пароль минимум 6 символов.","err"); return false; }
   function em(x){ return String((x&&(x.error_description||x.msg||x.error))||""); }
   try{
-    b.textContent="Проверяем…";
+    st("Проверяем…","");
     var r=await fetch(SUPA.url+"/auth/v1/token?grant_type=password",
       {method:"POST",headers:supaH(),body:JSON.stringify({email:m,password:p})});
     var j=await r.json().catch(function(){return {};});
     if(!r.ok){
       var e=em(j)||("HTTP "+r.status);
-      if(!/invalid (login )?credential/i.test(e)){ accSt(supaErrText(new Error(e)),"err"); return; }
-      // неверный пароль ИЛИ аккаунта нет — Supabase не различает. Пробуем создать:
-      b.textContent="Создаём аккаунт…";
+      if(!/invalid (login )?credential/i.test(e)){ st(supaErrText(new Error(e)),"err"); return false; }
+      st("Аккаунт не найден — создаём…","");
       var rs=await fetch(SUPA.url+"/auth/v1/signup",
         {method:"POST",headers:supaH(),body:JSON.stringify({email:m,password:p})});
       var js=await rs.json().catch(function(){return {};});
       if(!rs.ok){
         var e2=em(js)||("HTTP "+rs.status);
-        accSt(/already/i.test(e2)?"Такой аккаунт уже есть — неверный пароль.":supaErrText(new Error(e2)),"err");
-        return;
+        st(/already/i.test(e2)?"Такой аккаунт уже есть — неверный пароль.":supaErrText(new Error(e2)),"err");
+        return false;
       }
       if(!js.access_token){
-        accSt("Аккаунт создан ✓ Открой ссылку из письма для подтверждения, потом войди.","ok");
-        return;
+        st("Аккаунт создан ✓ Открой ссылку из письма для подтверждения, потом войди.","ok");
+        return false;
       }
-      r=rs; j=js;   // создан и сразу вошли (подтверждение выключено)
+      r=rs; j=js;
     }
     supaSave({access_token:j.access_token,refresh_token:j.refresh_token,
       expires_at:Date.now()+(j.expires_in||3600)*1000,user:j.user});
-    accRender(); updAccUi();
-    accSt("Вошли как "+((j.user&&j.user.email)||m)+" ✓","ok");
-    await supaSync(true);
-  }catch(e){ accSt(supaErrText(e),"err"); }
-  finally{ b.disabled=false; b.textContent="Войти или создать"; }
+    return true;
+  }catch(e){ st(supaErrText(e),"err"); return false; }
+}
+async function supaAuth(){
+  var b=$("accGo"); b.disabled=true;
+  try{
+    if(await supaAuthCore($("accMail").value.trim(),$("accPass").value,accSt)){
+      accRender(); updAccUi();
+      accSt("Вошли как "+((supaUser()||{}).email||"")+" ✓","ok");
+      await supaSync(true);
+    }
+  }finally{ b.disabled=false; b.textContent="Войти или создать"; }
 }
 async function supaSync(first){
   var tok=await supaToken();
@@ -1208,6 +1250,7 @@ async function supaSync(first){
     accSt(SUPA.expErr?"Таблицы Supabase не созданы — выполни SQL из инструкции."
       :(SUPA.exp?"Время аккаунта истекло — синхронизация приостановлена, продлить может администратор."
       :"Время не выдано — обратись к администратору за доступом."),"err");
+    gateUpd();
     return;
   }
   try{
@@ -1240,7 +1283,7 @@ async function supaSync(first){
     accRender();
     accSt(first?"Синхронизировано ✓":"Обновлено ✓","ok");
   }catch(e){ accSt(supaErrText(e),"err"); }
-  updAccUi();
+  updAccUi(); gateUpd();
 }
 function supaApplySettings(d){
   try{
@@ -1286,6 +1329,38 @@ function updAccUi(){
   b.innerHTML=u?('<span class="em">'+esc((u.email||"").split("@")[0])+"</span>"):"Аккаунт";
   b.title=u?("Вошли: "+u.email):"Войти — синхронизация избранного";
 }
+function gateSt(msg,cls){ var el=$("gSt"); if(el){ el.textContent=msg||""; el.className="gst "+(cls||""); } }
+async function gateAuth(){
+  var b=$("gGo"); b.disabled=true;
+  try{
+    if(await supaAuthCore($("gMail").value.trim(),$("gPass").value,gateSt)){
+      gateSt("Вошли — проверяем доступ…","");
+      updAccUi(); await supaSync(true);
+    }
+  }finally{ b.disabled=false; b.textContent="Войти или создать"; }
+}
+function gateMsg(){
+  var u=supaUser();
+  if(!u) return "Войдите или создайте аккаунт — доступ выдаёт администратор.";
+  if(SUPA.expErr) return "Сервер доступа не отвечает — попробуй «Проверить ещё раз» или сообщи администратору.";
+  if(!SUPA.exp) return "Время доступа не выдано. Аккаунт «"+(u.email||"")+"» ждёт — администратор должен выдать часы.";
+  return "Время аккаунта истекло ("+new Date(SUPA.exp).toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})+"). Продлить может администратор.";
+}
+function gateUpd(){
+  var g=$("gate"); if(!g) return;
+  if(!supaOn()){ g.classList.add("off"); return; }
+  if(supaActive()){ g.classList.add("off"); return; }
+  g.classList.remove("off");
+  var u=supaUser();
+  $("gForm").style.display=u?"none":"block";
+  $("gWho").style.display=u?"block":"none";
+  if(u){ $("gWhoMail").textContent=u.email||""; $("gMsg").textContent=gateMsg(); }
+}
+async function gateOut(){
+  var tok=await supaToken();
+  if(tok){ try{ await fetch(SUPA.url+"/auth/v1/logout",{method:"POST",headers:supaH(tok)}); }catch(e){} }
+  supaClear(); accRender(); updAccUi(); gateUpd(); gateSt("Вышли. Избранное осталось в этом браузере.","ok");
+}
 function accOpen(){ if(!supaOn()) return; accRender(); $("accOvl").classList.add("open"); }
 function accClose(){ $("accOvl").classList.remove("open"); }
 (function(){
@@ -1299,10 +1374,17 @@ function accClose(){ $("accOvl").classList.remove("open"); }
   $("accOut").onclick=async function(){
     var tok=await supaToken();
     if(tok){ try{ await fetch(SUPA.url+"/auth/v1/logout",{method:"POST",headers:supaH(tok)}); }catch(e){} }
-    supaClear(); accRender(); updAccUi(); accSt("Вышли. Избранное осталось в этом браузере.","ok");
+    supaClear(); accRender(); updAccUi(); gateUpd(); accSt("Вышли. Избранное осталось в этом браузере.","ok");
   };
+  $("gGo").onclick=gateAuth;
+  $("gPass").addEventListener("keydown",function(e){ if(e.key==="Enter") gateAuth(); });
+  $("gRetry").onclick=async function(){ gateSt("Проверяем…",""); await supaSync(false); };
+  $("gOut").onclick=gateOut;
+  setInterval(function(){ if(supaOn()&&supaUser()&&SUPA.exp&&Date.now()>SUPA.exp&&!$("gate").classList.contains("off")) return;
+    if(supaOn()&&supaUser()&&SUPA.exp&&Date.now()>SUPA.exp){ gateUpd(); accRender(); } },30000);
   document.addEventListener("keydown",function(e){ if(e.key==="Escape") accClose(); });
-  if(supaOn()&&supaUser()){ supaToken().then(function(t){ if(t){ updAccUi(); supaSync(false); } }); }
+  if(supaOn()&&supaUser()){ supaToken().then(function(t){ if(t){ updAccUi(); supaSync(false); } else gateUpd(); }); }
+  else gateUpd();
   updAccUi();
 })();
 
