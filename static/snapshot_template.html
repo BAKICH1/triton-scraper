@@ -228,6 +228,28 @@ body.notg .tgbtn,body.notg .sh-tg{display:none}
 .meta .cat{color:var(--muted)}
 .empty{text-align:center;color:var(--muted);padding:90px 20px}
 .empty b{display:block;font-size:16px;color:var(--text);margin-bottom:6px;font-weight:700}
+/* аккаунт */
+#btnAcc{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#btnAcc .em{font-weight:650;color:var(--text)}
+.accovl{position:fixed;inset:0;z-index:80;background:rgba(10,12,18,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:20px;animation:fadeIn .18s}
+.accovl.open{display:flex}
+.acc{background:var(--panel);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow2);width:100%;max-width:360px;padding:22px;animation:shIn .28s cubic-bezier(.2,.9,.3,1)}
+.acc h3{margin:0 0 4px;font-size:16.5px;font-weight:800}
+.acc .sub{color:var(--dim);font-size:12px;margin-bottom:14px;line-height:1.5}
+.acc input{width:100%;margin-bottom:9px}
+.acc .row{display:flex;gap:8px;margin-top:6px}
+.acc .go{flex:1;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;border:none;border-radius:12px;padding:11px;font:inherit;font-size:13px;font-weight:750;cursor:pointer;transition:.16s;box-shadow:0 6px 16px -6px rgba(15,118,110,.5)}
+.acc .go:hover{filter:brightness(1.07);transform:translateY(-1px)}
+.acc .go:disabled{opacity:.55;pointer-events:none}
+.acc .ghost{flex:1;background:var(--panel);border:1px solid var(--border-hi);color:var(--text);border-radius:12px;padding:11px;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
+.acc .ghost:hover{box-shadow:var(--shadow)}
+.acc .st{font-size:12px;line-height:1.5;margin-top:10px;min-height:18px}
+.acc .st.ok{color:var(--live)}
+.acc .st.err{color:var(--err)}
+.acc .who{display:flex;align-items:center;gap:9px;background:var(--panel2);border:1px solid var(--border);border-radius:13px;padding:11px;margin-bottom:13px}
+.acc .who .av{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex:none}
+.acc .who .mail{font-size:13px;font-weight:650;word-break:break-all}
+.acc .who .cap{font-size:11px;color:var(--dim)}
 .empty-reset{margin-top:18px;background:var(--ink);color:var(--inktext);border:none;border-radius:11px;padding:9px 20px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:.16s}
 .empty-reset:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
 footer{padding:26px 28px;color:var(--dim);font-size:11.5px;text-align:center;border-top:1px solid var(--border);line-height:1.8}
@@ -289,6 +311,7 @@ footer{padding:26px 28px;color:var(--dim);font-size:11.5px;text-align:center;bor
   <button id="btnAuto">Авто: вкл</button>
   <button id="btnSound">Звук: вкл</button>
   <button id="btnTheme" title="Светлая / тёмная тема"></button>
+  <button id="btnAcc" style="display:none" title="Аккаунт: синхронизация избранного и настроек">Аккаунт</button>
 </header>
 
 <div class="tabs">
@@ -333,6 +356,22 @@ footer{padding:26px 28px;color:var(--dim);font-size:11.5px;text-align:center;bor
 
   <div class="ovl" id="ovl">
     <div class="sheet" id="sheet"></div>
+  </div>
+  <div class="accovl" id="accOvl">
+    <div class="acc">
+      <h3 id="accTitle">Аккаунт</h3>
+      <div class="sub" id="accSub">Вход синхронизирует избранное и настройки между устройствами.</div>
+      <div id="accBody"></div>
+      <div class="st" id="accSt"></div>
+      <div class="row"><button class="go" id="accGo">Войти или создать</button></div>
+      <div class="row" id="accLoggedRow" style="display:none">
+        <button class="ghost" id="accSync">Синхронизировать</button>
+        <button class="ghost" id="accOut">Выйти</button>
+      </div>
+      <div class="row" style="justify-content:center;margin-top:12px">
+        <button class="ghost" id="accX" style="flex:0 0 auto;padding:7px 16px;font-size:12px">Закрыть</button>
+      </div>
+    </div>
   </div>
   <div class="empty" id="empty" style="display:none"><b style="display:block">Ничего не найдено</b>Измените фильтры или нажмите «Обновить».<button class="empty-reset" id="resetF" type="button">Сбросить фильтры</button></div>
 </main>
@@ -718,7 +757,7 @@ function renderBoard(){
   });
   $("shown").textContent="";
 }
-function saveCols(){ try{localStorage.setItem("kl_cols",JSON.stringify(cols));}catch(e){} }
+function saveCols(){ try{localStorage.setItem("kl_cols",JSON.stringify(cols));}catch(e){} supaPushSettings(); }
 function renderColSel(){
   var out="", open=false;
   CATS.forEach(function(c){
@@ -814,6 +853,7 @@ try{ if(localStorage.getItem("kl_self")==="1") $("fself").classList.add("on"); }
 $("fself").onclick=function(){
   this.classList.toggle("on");
   try{ localStorage.setItem("kl_self", this.classList.contains("on")?"1":"0"); }catch(e){}
+  supaPushSettings();
   render();
 };
 $("feedMore").onclick=function(){ feedCap+=150; render(); };
@@ -879,6 +919,7 @@ function toggleFav(id){
     if(x&&x._favArch) FAV[id]._favArch=1;
   }
   favSave();
+  supaFavChange(id);
   document.querySelectorAll(".favbtn[data-id='"+cssEsc(String(id))+"']").forEach(function(b){
     b.classList.toggle("on",!!FAV[id]);
     b.title=FAV[id]?"Убрать из избранного":"В избранное ★";
@@ -1043,6 +1084,173 @@ $("ovl").addEventListener("click",function(e){
   if(f){ e.preventDefault(); e.stopPropagation(); toggleFav(f.dataset.id); }
 });
 
+/* ===== Аккаунт Supabase (опционально): вход + синхронизация избранного/настроек ===== */
+var SUPA={url:"__SUPA_URL__", key:"__SUPA_KEY__"};
+var SUPA_SESS=null, supaSyncT=null, supaSetT=null;
+function supaOn(){ return !!(SUPA.url&&SUPA.key); }
+function supaH(tok){ var h={"apikey":SUPA.key,"Content-Type":"application/json"};
+  if(tok) h["Authorization"]="Bearer "+tok; return h; }
+function supaLoad(){ try{ return JSON.parse(localStorage.getItem("kl_supa")||"null"); }catch(e){ return null; } }
+function supaSave(x){ try{ localStorage.setItem("kl_supa",JSON.stringify(x)); }catch(e){} }
+function supaClear(){ try{ localStorage.removeItem("kl_supa"); }catch(e){} SUPA_SESS=null; }
+function supaUser(){ return (supaLoad()||{}).user||null; }
+async function supaToken(){
+  var t=supaLoad();
+  if(!t||!t.refresh_token) return null;
+  if(t.expires_at&&Date.now()<t.expires_at-120000&&t.access_token) return t.access_token;   // жив — обновлять не надо
+  try{
+    var r=await fetch(SUPA.url+"/auth/v1/token?grant_type=refresh_token",
+      {method:"POST",headers:supaH(),body:JSON.stringify({refresh_token:t.refresh_token})});
+    if(!r.ok) throw 0;
+    var j=await r.json();
+    supaSave({access_token:j.access_token,refresh_token:j.refresh_token,
+      expires_at:Date.now()+(j.expires_in||3600)*1000,user:j.user||t.user});
+    return j.access_token;
+  }catch(e){ supaClear(); return null; }
+}
+function accSt(msg,cls){ var el=$("accSt"); if(el){ el.textContent=msg||""; el.className="st "+(cls||""); } }
+function supaErrText(e){
+  var m=String((e&&e.message)||e||"");
+  if(/invalid credential/i.test(m)) return "Неверная почта или пароль.";
+  if(/already (been )?registered|already exists/i.test(m)) return "Такой аккаунт уже есть — просто войди.";
+  if(/at least 6/i.test(m)) return "Пароль минимум 6 символов.";
+  if(/not confirmed/i.test(m)) return "Почта не подтверждена — проверь входящие.";
+  if(/able to validate/i.test(m)) return "Проверь адрес почты и пароль.";
+  if(/failed to fetch|network/i.test(m)) return "Сеть недоступна — попробуй ещё раз.";
+  return m||"Не получилось — попробуй ещё раз.";
+}
+function accRender(){
+  var u=supaUser(), body=$("accBody"), title=$("accTitle");
+  if(u){
+    title.textContent="Аккаунт";
+    body.innerHTML='<div class="who"><div class="av">'+esc((u.email||"?")[0].toUpperCase())+'</div>'+
+      '<div><div class="mail">'+esc(u.email||"")+'</div><div class="cap">избранное и настройки синхронизируются автоматически</div></div></div>';
+    $("accLoggedRow").style.display="flex";
+    $("accGo").style.display="none";
+  } else {
+    title.textContent="Вход / регистрация";
+    body.innerHTML='<input type="email" id="accMail" placeholder="Email" autocomplete="email">'+
+      '<input type="password" id="accPass" placeholder="Пароль (от 6 символов)" autocomplete="current-password">';
+    $("accLoggedRow").style.display="none";
+    $("accGo").style.display="block";
+  }
+  accSt("");
+}
+async function supaAuth(mode){
+  var m=$("accMail").value.trim(), p=$("accPass").value;
+  if(!m||!p){ accSt("Введи почту и пароль.","err"); return; }
+  var b=$("accGo"); b.disabled=true; b.textContent="Подождите…"; accSt("");
+  try{
+    var r=await fetch(SUPA.url+(mode==="up"?"/auth/v1/signup":"/auth/v1/token?grant_type=password"),
+      {method:"POST",headers:supaH(),body:JSON.stringify({email:m,password:p})});
+    var j=await r.json().catch(function(){return {};});
+    if(!r.ok) throw new Error(j.msg||j.error_description||j.error||("HTTP "+r.status));
+    if(!j.access_token){ accSt("Почта не подтверждена — открой ссылку из письма и войди.","ok"); return; }
+    supaSave({access_token:j.access_token,refresh_token:j.refresh_token,
+      expires_at:Date.now()+(j.expires_in||3600)*1000,user:j.user});
+    accRender(); accSt("Вошли как "+(j.user&&j.user.email||m)+" ✓","ok");
+    await supaSync(true);
+  }catch(e){ accSt(supaErrText(e),"err"); }
+  b.disabled=false; b.textContent="Войти или создать";
+}
+async function supaSync(first){
+  var tok=await supaToken();
+  if(!tok){ updAccUi(); return; }
+  try{
+    // 1) облачные избранное
+    var r=await fetch(SUPA.url+"/rest/v1/favorites?select=ad_id,data&order=updated_at.asc&limit=400",
+      {headers:supaH(tok)});
+    if(r.status===401){ supaClear(); updAccUi(); return; }
+    if(!r.ok) throw new Error("REST "+r.status);
+    var rows=await r.json();
+    var changed=false;
+    rows.forEach(function(row){
+      if(row.data&&row.data.url&&!FAV[row.ad_id]){ FAV[row.ad_id]=row.data; changed=true; }   // восстановление с облака
+    });
+    // 2) локальные, которых нет в облаке, — закачать
+    var have={}; rows.forEach(function(x){ have[x.ad_id]=1; });
+    var toUp=[];
+    Object.keys(FAV).forEach(function(k){ if(!have[k]&&FAV[k]&&FAV[k].url){ toUp.push({user_id:supaUser()&&supaUser().id,ad_id:k,data:FAV[k],updated_at:new Date().toISOString()}); } });
+    if(toUp.length){
+      await fetch(SUPA.url+"/rest/v1/favorites?on_conflict=user_id,ad_id",
+        {method:"POST",headers:Object.assign(supaH(tok),{"Prefer":"resolution=merge-duplicates"}),
+         body:JSON.stringify(toUp)});
+    }
+    if(changed||first){ favSave(); if(favOn) render(); }
+    // 3) настройки: при первом входе облачные важнее
+    if(first){
+      var rs=await fetch(SUPA.url+"/rest/v1/settings?select=data&limit=1",{headers:supaH(tok)});
+      if(rs.ok){ var arr=await rs.json();
+        if(arr.length&&arr[0].data){ supaApplySettings(arr[0].data); supaPushSettings(); } }
+    }
+    accSt(first?"Синхронизировано ✓":"Обновлено ✓","ok");
+  }catch(e){ accSt(supaErrText(e),"err"); }
+  updAccUi();
+}
+function supaApplySettings(d){
+  try{
+    if(Array.isArray(d.cols)&&d.cols.length){ cols=d.cols; localStorage.setItem("kl_cols",JSON.stringify(cols)); saveCols(); }
+    ["hot","warm","self"].forEach(function(k){ if(d[k]!=null) localStorage.setItem("kl_"+k,d[k]?"1":"0"); });
+    if(d.theme!=null){ localStorage.setItem("kl_theme",d.theme?"dark":"light"); applyTheme(!!d.theme); }
+    ["fhot","fwarm","fself"].forEach(function(id){ var b=$(id); var k=id.slice(1);
+      if(localStorage.getItem("kl_"+k)==="1"&&!b.classList.contains("on")) b.click();
+      else if(localStorage.getItem("kl_"+k)==="0"&&b.classList.contains("on")) b.click(); });
+    renderColSel(); render();
+  }catch(e){}
+}
+function supaPushSettings(){
+  if(!supaOn()||!supaUser()) return;
+  clearTimeout(supaSetT);
+  supaSetT=setTimeout(async function(){
+    var tok=await supaToken(); if(!tok) return;
+    var d={cols:cols,hot:$("fhot").classList.contains("on"),warm:$("fwarm").classList.contains("on"),
+      self:$("fself").classList.contains("on"),theme:document.documentElement.classList.contains("dark")};
+    try{ await fetch(SUPA.url+"/rest/v1/settings?on_conflict=user_id",
+      {method:"POST",headers:Object.assign(supaH(tok),{"Prefer":"resolution=merge-duplicates"}),
+       body:JSON.stringify([{user_id:supaUser().id,data:d,updated_at:new Date().toISOString()}])}); }catch(e){}
+  },1500);
+}
+function supaFavChange(id){
+  if(!supaOn()||!supaUser()) return;
+  clearTimeout(supaSyncT);
+  supaSyncT=setTimeout(async function(){
+    var tok=await supaToken(); if(!tok) return;
+    try{
+      if(FAV[id]) await fetch(SUPA.url+"/rest/v1/favorites?on_conflict=user_id,ad_id",
+        {method:"POST",headers:Object.assign(supaH(tok),{"Prefer":"resolution=merge-duplicates"}),
+         body:JSON.stringify([{user_id:supaUser().id,ad_id:id,data:FAV[id],updated_at:new Date().toISOString()}])});
+      else await fetch(SUPA.url+"/rest/v1/favorites?ad_id=eq."+encodeURIComponent(id),
+        {method:"DELETE",headers:supaH(tok)});
+    }catch(e){}
+  },900);
+}
+function updAccUi(){
+  var b=$("btnAcc"); if(!supaOn()){ b.style.display="none"; return; }
+  b.style.display="inline-flex";
+  var u=supaUser();
+  b.innerHTML=u?('<span class="em">'+esc((u.email||"").split("@")[0])+"</span>"):"Аккаунт";
+  b.title=u?("Вошли: "+u.email):"Войти — синхронизация избранного";
+}
+function accOpen(){ if(!supaOn()) return; accRender(); $("accOvl").classList.add("open"); }
+function accClose(){ $("accOvl").classList.remove("open"); }
+(function(){
+  var o=$("accOvl");
+  o.addEventListener("click",function(e){ if(e.target===o) accClose(); });
+  $("accX").onclick=accClose;
+  $("btnAcc").onclick=accOpen;
+  $("accGo").onclick=function(){ supaAuth("in"); };
+  $("accMail")&&null;
+  $("accSync").onclick=function(){ supaSync(false); };
+  $("accOut").onclick=async function(){
+    var tok=await supaToken();
+    if(tok){ try{ await fetch(SUPA.url+"/auth/v1/logout",{method:"POST",headers:supaH(tok)}); }catch(e){} }
+    supaClear(); accRender(); updAccUi(); accSt("Вышли. Избранное осталось в этом браузере.","ok");
+  };
+  document.addEventListener("keydown",function(e){ if(e.key==="Escape") accClose(); });
+  if(supaOn()&&supaUser()){ supaToken().then(function(t){ if(t){ updAccUi(); supaSync(false); } }); }
+  updAccUi();
+})();
+
 document.addEventListener("keydown",function(e){ if(e.key==="Escape") closeCard(); });
 
 /* асинхронное обогащение карточки: все фото, полное описание, продавец */
@@ -1097,6 +1305,7 @@ try{ if(localStorage.getItem("kl_hot")==="1") $("fhot").classList.add("on"); }ca
 $("fhot").onclick=function(){
   this.classList.toggle("on");
   try{ localStorage.setItem("kl_hot", this.classList.contains("on")?"1":"0"); }catch(e){}
+  supaPushSettings();
   render();
 };
 if(favOn) $("ffav").classList.add("on");
@@ -1109,6 +1318,7 @@ try{ if(localStorage.getItem("kl_warm")==="1") $("fwarm").classList.add("on"); }
 $("fwarm").onclick=function(){
   this.classList.toggle("on");
   try{ localStorage.setItem("kl_warm", this.classList.contains("on")?"1":"0"); }catch(e){}
+  supaPushSettings();
   render();
 };
 $("fcat").onchange=function(){ render(); if(tab==="feed") scan(true); };
@@ -1132,6 +1342,7 @@ $("btnTheme").onclick=function(){
   var d=!document.documentElement.classList.contains("dark");
   applyTheme(d);
   try{ localStorage.setItem("kl_theme",d?"dark":"light"); }catch(e){}
+  supaPushSettings();
 };
 $("btnAuto").onclick=function(){ auto=!auto; localStorage.setItem("kl_auto",auto?"on":"off"); $("btnAuto").textContent=auto?"Авто: вкл":"Авто: выкл"; if(auto)scan(true); };
 $("btnSound").onclick=function(){ sound=!sound; localStorage.setItem("kl_sound",sound?"on":"off"); $("btnSound").textContent=sound?"Звук: вкл":"Звук: выкл"; if(sound)beep(); };
