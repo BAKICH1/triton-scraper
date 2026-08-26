@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Панель управления — Triton</title>
+<style>
+:root{
+  --bg:#f4f5f8; --panel:#ffffff; --panel2:#f6f7fa; --raised:#edeef3;
+  --border:#e4e6ec; --text:#16181d; --muted:#666b76; --dim:#9ba0ab;
+  --live:#0c8a4d; --err:#cc3f3f; --warn:#a97b00;
+  --acc:#0f766e; --acc2:#115e59; --acc-soft:rgba(15,118,110,.09); --acc-ring:rgba(15,118,110,.20);
+  --shadow:0 1px 2px rgba(16,24,40,.05),0 14px 34px -12px rgba(16,24,40,.16);
+}
+html.dark{
+  --bg:#0b0c10; --panel:#15171d; --panel2:#1b1e26; --raised:#232733;
+  --border:#262a34; --text:#edeff4; --muted:#949aa8; --dim:#6b7180;
+  --live:#6fd59f; --err:#e07a7a; --warn:#d8c37a;
+  --acc:#2fbfae; --acc2:#25a597; --acc-soft:rgba(47,191,174,.10); --acc-ring:rgba(47,191,174,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;min-height:100vh}
+.wrap{max-width:880px;margin:0 auto;padding:14px 14px 60px}
+header{display:flex;align-items:center;gap:10px;padding:10px 0 14px}
+.logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}
+h1{font-size:17px;font-weight:700;letter-spacing:-.01em}
+.sub{font-size:12px;color:var(--muted)}
+.spacer{flex:1}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+.btn{background:var(--acc);color:#fff;font-weight:600;border-radius:10px;padding:9px 16px;transition:filter .15s,transform .05s}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.5;cursor:default}
+.ghost{background:var(--raised);color:var(--text);font-weight:500;border-radius:10px;padding:8px 12px}
+.ghost:hover{filter:brightness(.97)}
+.iconbtn{width:34px;height:34px;border-radius:10px;background:var(--raised);display:inline-flex;align-items:center;justify-content:center;font-size:15px}
+input{font:inherit;background:var(--panel2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:10px 12px;width:100%;outline:none}
+input:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-ring)}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:16px}
+.st{font-size:13px;margin-top:10px;min-height:18px}
+.st.ok{color:var(--live)} .st.err{color:var(--err)}
+.login{max-width:360px;margin:8vh auto 0}
+.login h2{font-size:18px;margin-bottom:4px}
+.login p{font-size:13px;color:var(--muted);margin-bottom:14px}
+.login input{margin-bottom:10px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 12px}
+.stat b{display:block;font-size:20px;letter-spacing:-.02em}
+.stat span{font-size:11px;color:var(--muted)}
+.stat.g b{color:var(--live)} .stat.y b{color:var(--warn)} .stat.r b{color:var(--err)}
+.searchrow{display:flex;gap:8px;margin-bottom:12px}
+.tbl{display:flex;flex-direction:column;gap:8px}
+.row{background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:12px 14px}
+.row.expired{border-color:rgba(204,63,63,.35)}
+.rtop{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.av{width:34px;height:34px;border-radius:50%;background:var(--acc-soft);color:var(--acc);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex:none}
+.rmain{flex:1;min-width:150px}
+.mail{font-weight:600;font-size:14px;word-break:break-all}
+.meta{font-size:12px;color:var(--muted)}
+.badge{font-size:12.5px;font-weight:600;padding:4px 10px;border-radius:99px;white-space:nowrap}
+.badge.ok{background:rgba(12,138,77,.12);color:var(--live)}
+.badge.warn{background:rgba(169,123,0,.12);color:var(--warn)}
+.badge.err{background:rgba(204,63,63,.12);color:var(--err)}
+.badge.dim{background:var(--raised);color:var(--dim)}
+.until{font-size:12px;color:var(--muted);margin-top:2px}
+.acts{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px}
+.chip{background:var(--acc-soft);color:var(--acc);font-weight:600;font-size:12.5px;padding:6px 10px;border-radius:9px;transition:filter .15s}
+.chip:hover{filter:brightness(1.08)}
+.hrs{width:86px;padding:7px 10px;border-radius:9px;font-size:13px;text-align:center}
+.go{background:var(--acc);color:#fff;font-weight:600;font-size:13px;padding:7px 13px;border-radius:9px}
+.wipe{background:rgba(204,63,63,.1);color:var(--err);font-weight:600;font-size:12.5px;padding:6px 10px;border-radius:9px}
+.empty{text-align:center;color:var(--dim);padding:30px 10px;font-size:14px}
+.spin{animation:sp 1s linear infinite;display:inline-block}
+@keyframes sp{to{transform:rotate(360deg)}}
+.whoami{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:6px 10px}
+@media(max-width:560px){.stats{grid-template-columns:repeat(2,1fr)}.badge{font-size:11.5px}}
+.nosupa{max-width:420px;margin:10vh auto 0;text-align:center}
+.nosupa .logo{margin:0 auto 12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">⏱</div>
+    <div>
+      <h1>Панель управления</h1>
+      <div class="sub">время доступа к аккаунтам Triton</div>
+    </div>
+    <div class="spacer"></div>
+    <button class="iconbtn" id="btnTheme" title="Тема">🌙</button>
+    <button class="ghost" id="btnOut" style="display:none">Выйти</button>
+  </header>
+
+  <div id="view"></div>
+</div>
+
+<script>
+/* ===== конфиг (вшивается при сборке) ===== */
+var SUPA={url:"__SUPA_URL__", key:"__SUPA_KEY__"};
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+
+/* ===== тема ===== */
+try{ if(localStorage.getItem("kl_theme")==="dark") document.documentElement.classList.add("dark"); }catch(e){}
+function applyTheme(d){
+  document.documentElement.classList.toggle("dark",d);
+  $("btnTheme").textContent=d?"☀️":"🌙";
+  try{ localStorage.setItem("kl_theme",d?"dark":"light"); }catch(e){}
+}
+document.addEventListener("DOMContentLoaded",function(){
+  applyTheme(document.documentElement.classList.contains("dark"));
+  $("btnTheme").onclick=function(){ applyTheme(!document.documentElement.classList.contains("dark")); };
+});
+
+/* ===== REST Supabase без библиотек ===== */
+function supaOn(){ return !!(SUPA.url&&SUPA.key&&SUPA.url.indexOf("__")!==0); }
+function sessLoad(){ try{ return JSON.parse(localStorage.getItem("kl_admin_sess")||"null"); }catch(e){ return null; } }
+function sessSave(x){ try{ localStorage.setItem("kl_admin_sess",JSON.stringify(x)); }catch(e){} }
+function sessClear(){ try{ localStorage.removeItem("kl_admin_sess"); }catch(e){} }
+function h(tok){
+  var x={"apikey":SUPA.key,"Content-Type":"application/json"};
+  if(tok) x["Authorization"]="Bearer "+tok; return x;
+}
+async function token(){
+  var t=sessLoad();
+  if(!t||!t.refresh_token) return null;
+  if(t.expires_at&&Date.now()<t.expires_at-120000&&t.access_token) return t.access_token;
+  try{
+    var r=await fetch(SUPA.url+"/auth/v1/token?grant_type=refresh_token",
+      {method:"POST",headers:h(),body:JSON.stringify({refresh_token:t.refresh_token})});
+    if(!r.ok) throw 0;
+    var j=await r.json();
+    sessSave({access_token:j.access_token,refresh_token:j.refresh_token,
+      expires_at:Date.now()+(j.expires_in||3600)*1000,user:j.user||t.user});
+    return j.access_token;
+  }catch(e){ sessClear(); return null; }
+}
+function errRu(e){
+  var m=String((e&&e.message)||e||"");
+  if(/invalid credential/i.test(m)) return "Неверная почта или пароль.";
+  if(/failed to fetch|network/i.test(m)) return "Сеть недоступна — попробуй ещё раз.";
+  return m||"Не получилось — попробуй ещё раз.";
+}
+function st(msg,cls){ var el=$("st"); if(el){ el.textContent=msg||""; el.className="st "+(cls||""); } }
+
+/* ===== состояние ===== */
+var ME=null, PROFILES=[], GRANTS=[], TICK=null, SEARCH="";
+
+function fmtRem(ms){
+  if(ms<=0) return "истёк";
+  var m=Math.floor(ms/60000), d=Math.floor(m/1440), hh=Math.floor((m%1440)/60), mm=m%60;
+  if(d>0) return d+" д "+hh+" ч";
+  if(hh>0) return hh+" ч "+mm+" м";
+  return mm+" м";
+}
+function fmtUntil(iso){
+  var d=new Date(iso);
+  return d.toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+}
+function userUntil(uid){
+  var mx=0;
+  GRANTS.forEach(function(g){ if(g.user_id===uid){ var t=Date.parse(g.valid_until); if(t>mx) mx=t; } });
+  return mx; /* 0 = не выдано */
+}
+
+/* ===== экраны ===== */
+function viewNoSupa(){
+  $("view").innerHTML='<div class="card nosupa"><div class="logo">⏱</div>'+
+    '<h2 style="margin-bottom:6px">Панель не настроена</h2>'+
+    '<p style="color:var(--muted);font-size:14px">Жду ключи Supabase — как только их вшьют в сборку, панель оживёт автоматически.</p></div>';
+  $("btnOut").style.display="none";
+}
+function viewLogin(){
+  $("btnOut").style.display="none";
+  $("view").innerHTML='<div class="card login">'+
+    '<h2>Вход для администратора</h2>'+
+    '<p>Панель выдачи времени на аккаунты. Войди аккаунтом, который назначен админом.</p>'+
+    '<input type="email" id="mail" placeholder="Email" autocomplete="email">'+
+    '<input type="password" id="pass" placeholder="Пароль" autocomplete="current-password">'+
+    '<button class="btn" id="go" style="width:100%;margin-top:4px">Войти</button>'+
+    '<div class="st" id="st"></div></div>';
+  $("go").onclick=login;
+  $("pass").addEventListener("keydown",function(e){ if(e.key==="Enter") login(); });
+}
+function viewDenied(){
+  $("btnOut").style.display="";
+  $("view").innerHTML='<div class="card nosupa"><div class="logo" style="background:rgba(204,63,63,.15);color:var(--err)">⛔</div>'+
+    '<h2 style="margin-bottom:6px">Нет доступа</h2>'+
+    '<p style="color:var(--muted);font-size:14px">Этот аккаунт не администратор. Попроси владельца назначить админа (profiles.role=&#39;admin&#39;).</p></div>';
+}
+function viewPanel(){
+  $("btnOut").style.display="";
+  var nAct=0,nWarn=0,nExp=0;
+  PROFILES.forEach(function(p){
+    var u=userUntil(p.user_id), rem=u-Date.now();
+    if(!u) return; if(rem<=0) nExp++; else if(rem<86400000) nWarn++; else nAct++;
+  });
+  $("view").innerHTML=
+    '<div class="stats">'+
+      '<div class="stat"><b>'+PROFILES.length+'</b><span>аккаунтов</span></div>'+
+      '<div class="stat g"><b>'+nAct+'</b><span>активных &gt;1 дня</span></div>'+
+      '<div class="stat y"><b>'+nWarn+'</b><span>истекают &lt;24 ч</span></div>'+
+      '<div class="stat r"><b>'+nExp+'</b><span>истекших</span></div>'+
+    '</div>'+
+    '<div class="searchrow"><input id="q" placeholder="Поиск по email…" value="'+esc(SEARCH)+'">'+
+    '<button class="ghost" id="refresh" title="Обновить">⟳</button></div>'+
+    '<div class="tbl" id="tbl"></div>'+
+    '<div class="st" id="st"></div>';
+  $("q").addEventListener("input",function(){ SEARCH=this.value.trim().toLowerCase(); renderRows(); });
+  $("refresh").onclick=loadAll;
+  renderRows();
+  if(TICK) clearInterval(TICK);
+  TICK=setInterval(renderBadges,30000);
+}
+function renderRows(){
+  var list=PROFILES.slice();
+  if(SEARCH) list=list.filter(function(p){ return (p.email||"").toLowerCase().indexOf(SEARCH)>=0; });
+  list.sort(function(a,b){
+    var ua=userUntil(a.user_id),ub=userUntil(b.user_id);
+    var ra=ua?ua-Date.now():Infinity, rb=ub?ub-Date.now():Infinity;
+    var ka=ra<=0?(3e15+ua):ra, kb=rb<=0?(3e15+ub):rb;   /* активные по скорому истечению, потом истёкшие, потом без выдачи */
+    return ka-kb;
+  });
+  if(!list.length){ $("tbl").innerHTML='<div class="empty">Никого не найдено</div>'; return; }
+  $("tbl").innerHTML=list.map(function(p){
+    return '<div class="row" id="r_'+p.user_id+'">'+rowHtml(p)+'</div>';
+  }).join("");
+  list.forEach(function(p){
+    var uid=p.user_id;
+    var row=$("r_"+uid);
+    row.querySelectorAll(".chip[data-h]").forEach(function(b){
+      b.onclick=function(){ grant(uid,parseFloat(b.dataset.h)); };
+    });
+    row.querySelector(".go").onclick=function(){
+      var v=parseFloat(row.querySelector(".hrs").value);
+      if(!v||v<=0){ st("Введи часы (можно дробные, напр. 12 или 0.5)","err"); return; }
+      grant(uid,v);
+    };
+    row.querySelector(".wipe").onclick=function(){ wipe(uid); };
+  });
+  renderBadges();
+}
+function rowHtml(p){
+  var em=p.email||("(без email) "+p.user_id.slice(0,8));
+  var created=p.created_at?("регистрация "+fmtUntil(p.created_at)):"";
+  return '<div class="rtop">'+
+    '<div class="av">'+esc((em[0]||"?").toUpperCase())+'</div>'+
+    '<div class="rmain"><div class="mail">'+esc(em)+'</div><div class="meta">'+esc(created)+'</div></div>'+
+    '<div style="text-align:right"><span class="badge" data-b></span><div class="until" data-u></div></div>'+
+  '</div>'+
+  '<div class="acts">'+
+    '<button class="chip" data-h="1">+1 ч</button>'+
+    '<button class="chip" data-h="6">+6 ч</button>'+
+    '<button class="chip" data-h="24">+24 ч</button>'+
+    '<button class="chip" data-h="168">+7 дн</button>'+
+    '<button class="chip" data-h="720">+30 дн</button>'+
+    '<input class="hrs" type="number" min="0" step="0.5" placeholder="ч"><button class="go">Выдать</button>'+
+    '<span class="spacer" style="flex:1"></span>'+
+    '<button class="wipe" title="Забрать всё время">Обнулить</button>'+
+  '</div>';
+}
+function renderBadges(){
+  PROFILES.forEach(function(p){
+    var row=$("r_"+p.user_id); if(!row) return;
+    var b=row.querySelector("[data-b]"), u=row.querySelector("[data-u]");
+    var until=userUntil(p.user_id), rem=until-Date.now();
+    row.classList.toggle("expired",!!until&&rem<=0);
+    if(!until){ b.className="badge dim"; b.textContent="не выдано"; u.textContent=""; }
+    else if(rem<=0){ b.className="badge err"; b.textContent="истёк "+fmtRem(-rem)+" назад"; u.textContent="до "+fmtUntil(until); }
+    else if(rem<86400000){ b.className="badge warn"; b.textContent="⏳ "+fmtRem(rem); u.textContent="до "+fmtUntil(until); }
+    else { b.className="badge ok"; b.textContent="✓ "+fmtRem(rem); u.textContent="до "+fmtUntil(until); }
+  });
+}
+
+/* ===== действия ===== */
+async function login(){
+  var m=$("mail").value.trim(), p=$("pass").value;
+  if(!m||!p){ st("Введи почту и пароль.","err"); return; }
+  var b=$("go"); b.disabled=true; b.textContent="Входим…";
+  try{
+    var r=await fetch(SUPA.url+"/auth/v1/token?grant_type=password",
+      {method:"POST",headers:h(),body:JSON.stringify({email:m,password:p})});
+    var j=await r.json().catch(function(){return {};});
+    if(!r.ok) throw new Error(j.error_description||j.msg||("HTTP "+r.status));
+    sessSave({access_token:j.access_token,refresh_token:j.refresh_token,
+      expires_at:Date.now()+(j.expires_in||3600)*1000,user:j.user});
+    ME=j.user;
+    await enter();
+  }catch(e){ st(errRu(e),"err"); }
+  b.disabled=false; b.textContent="Войти";
+}
+async function enter(){
+  var tok=await token(); if(!tok){ viewLogin(); return; }
+  var r=await fetch(SUPA.url+"/rest/v1/profiles?select=user_id,email,role&user_id=eq."+ME.id,{headers:h(tok)});
+  if(!r.ok){ viewLogin(); st("Профиль не читается: таблицы созданы? SQL выполнен?","err"); return; }
+  var me=(await r.json())[0];
+  if(!me||me.role!=="admin"){ viewDenied(); return; }
+  await loadAll();
+}
+async function loadAll(){
+  var tok=await token(); if(!tok){ viewLogin(); return; }
+  try{
+    var a=await fetch(SUPA.url+"/rest/v1/profiles?select=user_id,email,role,created_at&order=created_at.desc&limit=500",{headers:h(tok)});
+    if(!a.ok) throw new Error("profiles: HTTP "+a.status);
+    PROFILES=await a.json();
+    var b=await fetch(SUPA.url+"/rest/v1/time_grants?select=user_id,valid_until,hours,created_at&order=created_at.desc&limit=1000",{headers:h(tok)});
+    if(!b.ok) throw new Error("time_grants: HTTP "+b.status);
+    GRANTS=await b.json();
+    if(!$("tbl")) viewPanel(); else { renderRows(); }
+    st("обновлено "+new Date().toLocaleTimeString("ru-RU"),"ok");
+  }catch(e){ st(errRu(e),"err"); }
+}
+async function grant(uid,hours){
+  var tok=await token(); if(!tok) return;
+  var cur=userUntil(uid), base=Math.max(cur,Date.now());
+  var until=new Date(base+hours*3600000).toISOString();
+  try{
+    var r=await fetch(SUPA.url+"/rest/v1/time_grants",
+      {method:"POST",headers:Object.assign(h(tok),{"Prefer":"return=representation"}),
+       body:JSON.stringify([{user_id:uid,valid_until:until,hours:hours,created_by:ME.id}])});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    var j=await r.json();
+    GRANTS=GRANTS.concat(j);
+    renderRows(); st("Выдано +"+hours+" ч ✓","ok");
+  }catch(e){ st(errRu(e),"err"); }
+}
+async function wipe(uid){
+  var tok=await token(); if(!tok) return;
+  try{
+    var r=await fetch(SUPA.url+"/rest/v1/time_grants?user_id=eq."+uid,{method:"DELETE",headers:h(tok)});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    GRANTS=GRANTS.filter(function(g){ return g.user_id!==uid; });
+    renderRows(); st("Время обнулено","ok");
+  }catch(e){ st(errRu(e),"err"); }
+}
+
+/* ===== старт ===== */
+document.addEventListener("DOMContentLoaded",async function(){
+  $("btnOut").onclick=function(){ if(TICK) clearInterval(TICK); sessClear(); ME=null; viewLogin(); };
+  if(!supaOn()){ viewNoSupa(); return; }
+  var s=sessLoad();
+  if(s&&s.user){ ME=s.user; await enter(); }
+  else viewLogin();
+});
+</script>
+</body>
+</html>
