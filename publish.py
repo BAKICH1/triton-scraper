@@ -25,6 +25,7 @@ STATE_FILE = os.path.join(HERE, "data", "publish_state.json")
 CLAIM_FILE = os.path.join(HERE, "data", "herenow_claim.txt")
 ADMIN_TPL = os.path.join(HERE, "static", "admin.html")
 OUT_ADMIN = os.path.join(HERE, "snapshot_admin.html")
+PANEL_CLAIM = os.path.join(HERE, "data", "panel_claim.txt")
 SUPA_CFG = os.path.join(HERE, "static", "supa.json")
 API = "https://here.now/api/v1/publish"
 HEADERS = {"content-type": "application/json", "X-HereNow-Client": "arena/agent-mode"}
@@ -183,14 +184,7 @@ def build():
         pass
     tpl_hash = hashlib.md5(html_tpl.encode("utf-8")).hexdigest()[:8]
 
-    # ключи Supabase (пусто → плейсхолдеры остаются, аккаунты/панель спят)
-    supa_url, supa_key = "__SUPA_URL__", "__SUPA_KEY__"
-    try:
-        _cfg = json.load(open(SUPA_CFG, encoding="utf-8"))
-        if _cfg.get("url"):
-            supa_url, supa_key = _cfg["url"], _cfg.get("key", "")
-    except Exception:
-        pass
+    supa_url, supa_key = _supa_cfg()
     stamp = datetime.now(timezone.utc)
     version = f"v{int(stamp.timestamp())}.{total}"
     ts_iso = stamp.isoformat(timespec="seconds")
@@ -228,18 +222,11 @@ def build():
     with open(OUT_VER, "w", encoding="utf-8") as f:
         f.write(version)
 
-    # admin.html — панель управления временем (пересобираем всегда, он маленький)
-    adm = open(ADMIN_TPL, encoding="utf-8").read()
-    adm = adm.replace("__SUPA_URL__", supa_url).replace("__SUPA_KEY__", supa_key)
-    _syntax_check(adm)
-    with open(OUT_ADMIN, "w", encoding="utf-8") as f:
-        f.write(adm)
-    print("✔ admin.html собран (панель управления)")
+
     print(f"✔ сборка: {len(ads)} объявлений, ads.json {len(data_str) // 1024} КБ, версия {version}")
     return {OUT_DATA: ("ads.json", "application/json; charset=utf-8"),
             OUT_VER: ("version.txt", "text/plain; charset=utf-8"),
-            OUT: ("index.html", "text/html; charset=utf-8"),
-            OUT_ADMIN: ("admin.html", "text/html; charset=utf-8")}
+            OUT: ("index.html", "text/html; charset=utf-8")}
 
 
 def _syntax_check(html):
@@ -287,18 +274,22 @@ def _upload(files, j, api_key=""):
         r.read()
 
 
-def create(files, name="Монитор Kleinanzeigen", desc="Новые объявления Kleinanzeigen во всех категориях, живое обновление"):
+def create(files, name="Монитор Kleinanzeigen", desc="Новые объявления Kleinanzeigen во всех категориях, живое обновление",
+           claim_file=None, api_key=""):
+    hdrs = dict(HEADERS)
+    if api_key:
+        hdrs["Authorization"] = f"Bearer {api_key}"
     body = json.dumps({
         "files": _files_meta(files),
         "displayName": name,
         "displayDescription": desc,
         "viewer": {"title": name, "description": desc},
     }).encode()
-    req = urllib.request.Request(API, data=body, method="POST", headers=HEADERS)
+    req = urllib.request.Request(API, data=body, method="POST", headers=hdrs)
     with urllib.request.urlopen(req, timeout=30) as r:
         j = json.load(r)
-    _upload(files, j)
-    _save_claim(j)
+    _upload(files, j, api_key)
+    _save_claim(j, claim_file or CLAIM_FILE)
     print("SITE_URL:", j.get("siteUrl"))
     return j
 
@@ -320,8 +311,8 @@ def update(slug, claim_token, files):
     return j
 
 
-def _save_claim(j):
-    with open(CLAIM_FILE, "w", encoding="utf-8") as f:
+def _save_claim(j, path=CLAIM_FILE):
+    with open(path, "w", encoding="utf-8") as f:
         f.write(f"site: {j.get('siteUrl')}\nslug: {j.get('slug')}\n"
                 f"claim: {j.get('claimUrl')}\nclaimToken: {j.get('claimToken')}\n")
     if j.get("claimUrl"):
@@ -338,11 +329,79 @@ def load_claim():
         slug = vals.get("slug")
         if not slug and vals.get("site"):
             slug = vals["site"].rstrip("/").split("//")[-1].split(".")[0]
-        if slug and vals.get("claimToken"):
-            return slug, vals["claimToken"]
+        if slug:
+            return slug, vals.get("claimToken", "")   # токена может не быть: сайт закреплён API-ключом
     except Exception:
         pass
     return None, None
+
+
+def _supa_cfg():
+    """ключи Supabase (пусто → плейсхолдеры остаются, аккаунты/панель спят)"""
+    supa_url, supa_key = "__SUPA_URL__", "__SUPA_KEY__"
+    try:
+        _cfg = json.load(open(SUPA_CFG, encoding="utf-8"))
+        if _cfg.get("url"):
+            supa_url, supa_key = _cfg["url"], _cfg.get("key", "")
+    except Exception:
+        pass
+    return supa_url, supa_key
+
+
+def build_admin():
+    """Панель управления — отдельный одностраничный сайт (без БД)."""
+    supa_url, supa_key = _supa_cfg()
+    adm = open(ADMIN_TPL, encoding="utf-8").read()
+    adm = adm.replace("__SUPA_URL__", supa_url).replace("__SUPA_KEY__", supa_key)
+    _syntax_check(adm)
+    with open(OUT_ADMIN, "w", encoding="utf-8") as f:
+        f.write(adm)
+    print("✔ панель собрана (admin)")
+    return {OUT_ADMIN: ("index.html", "text/html; charset=utf-8")}
+
+
+def _load_panel_claim():
+    try:
+        vals = {}
+        for line in open(PANEL_CLAIM, encoding="utf-8"):
+            if ":" in line:
+                k, v = line.split(":", 1)
+                vals[k.strip()] = v.strip()
+        slug = vals.get("slug")
+        if not slug and vals.get("site"):
+            slug = vals["site"].rstrip("/").split("//")[-1].split(".")[0]
+        if slug:
+            return slug, vals.get("claimToken", "")   # токена может не быть: сайт закреплён API-ключом
+    except Exception:
+        pass
+    return None, None
+
+
+def _local_api_key():
+    try:
+        return json.load(open(os.path.join(os.path.dirname(HERE), "herenow_key.json"))).get("apiKey", "")
+    except Exception:
+        return ""
+
+
+def publish_panel():
+    """Панель управления — ОТДЕЛЬНЫЙ сайт here.now (свой URL, свой claim)."""
+    files = build_admin()
+    api_key = os.environ.get("HERENOW_API_KEY", "").strip() or _local_api_key()
+    slug, token = _load_panel_claim()
+    if api_key:
+        os.environ["HERENOW_API_KEY"] = api_key   # update() берёт ключ из окружения
+    if slug:
+        try:
+            update(slug, token, files)
+            print(f"↑ панель обновлена: https://{slug}.here.now/")
+            return slug
+        except Exception as e:
+            print(f"⚠ обновление панели не удалось ({e}), создаю новый сайт")
+    j = create(files, name="Triton — панель управления",
+               desc="Выдача времени доступа на аккаунты Triton",
+               claim_file=PANEL_CLAIM, api_key=api_key)
+    return j.get("slug")
 
 
 def republish():
@@ -352,6 +411,11 @@ def republish():
     при ошибке ПАДАЕМ громко, никаких тихих клонов со сменой адреса.
     Случайный новый сайт создаём только когда адрес вообще не задан.
     """
+    try:
+        publish_panel()
+    except Exception as e:
+        print(f"⚠ панель не опубликована: {e}")
+
     files = build()
     slug, token = load_claim()
     pinned = os.environ.get("HERENOW_SLUG", "").strip()
