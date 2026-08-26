@@ -23,6 +23,9 @@ OUT_VER = os.path.join(HERE, "snapshot_version.txt")
 OUT_DATA = os.path.join(HERE, "snapshot_ads.json")
 STATE_FILE = os.path.join(HERE, "data", "publish_state.json")
 CLAIM_FILE = os.path.join(HERE, "data", "herenow_claim.txt")
+ADMIN_TPL = os.path.join(HERE, "static", "admin.html")
+OUT_ADMIN = os.path.join(HERE, "snapshot_admin.html")
+SUPA_CFG = os.path.join(HERE, "static", "supa.json")
 API = "https://here.now/api/v1/publish"
 HEADERS = {"content-type": "application/json", "X-HereNow-Client": "arena/agent-mode"}
 
@@ -179,6 +182,15 @@ def build():
     except Exception:
         pass
     tpl_hash = hashlib.md5(html_tpl.encode("utf-8")).hexdigest()[:8]
+
+    # ключи Supabase (пусто → плейсхолдеры остаются, аккаунты/панель спят)
+    supa_url, supa_key = "__SUPA_URL__", "__SUPA_KEY__"
+    try:
+        _cfg = json.load(open(SUPA_CFG, encoding="utf-8"))
+        if _cfg.get("url"):
+            supa_url, supa_key = _cfg["url"], _cfg.get("key", "")
+    except Exception:
+        pass
     stamp = datetime.now(timezone.utc)
     version = f"v{int(stamp.timestamp())}.{total}"
     ts_iso = stamp.isoformat(timespec="seconds")
@@ -191,7 +203,7 @@ def build():
 
     # index.html перезаливаем при смене шаблона ИЛИ числа категорий
     # (категории зашиты в index) — данные живут в ads.json
-    sig = f"{tpl_hash}:{len(cat_rows)}:{tg_name}"
+    sig = f"{tpl_hash}:{len(cat_rows)}:{tg_name}:{supa_url}"
     try:
         state = json.load(open(STATE_FILE, encoding="utf-8"))
     except Exception:
@@ -205,7 +217,9 @@ def build():
                 .replace("__STAMP__", stamp.strftime("%d.%m.%Y %H:%M UTC"))
                 .replace("__TSISO__", ts_iso)
                 .replace("__TPLHASH__", tpl_hash)
-                .replace("__VERSION__", version))
+                .replace("__VERSION__", version)
+                .replace("__SUPA_URL__", supa_url)
+                .replace("__SUPA_KEY__", supa_key))
         _syntax_check(html)
         with open(OUT, "w", encoding="utf-8") as f:
             f.write(html)
@@ -213,10 +227,19 @@ def build():
         print(f"✔ index.html пересобран (шаблон {tpl_hash})")
     with open(OUT_VER, "w", encoding="utf-8") as f:
         f.write(version)
+
+    # admin.html — панель управления временем (пересобираем всегда, он маленький)
+    adm = open(ADMIN_TPL, encoding="utf-8").read()
+    adm = adm.replace("__SUPA_URL__", supa_url).replace("__SUPA_KEY__", supa_key)
+    _syntax_check(adm)
+    with open(OUT_ADMIN, "w", encoding="utf-8") as f:
+        f.write(adm)
+    print("✔ admin.html собран (панель управления)")
     print(f"✔ сборка: {len(ads)} объявлений, ads.json {len(data_str) // 1024} КБ, версия {version}")
     return {OUT_DATA: ("ads.json", "application/json; charset=utf-8"),
             OUT_VER: ("version.txt", "text/plain; charset=utf-8"),
-            OUT: ("index.html", "text/html; charset=utf-8")}
+            OUT: ("index.html", "text/html; charset=utf-8"),
+            OUT_ADMIN: ("admin.html", "text/html; charset=utf-8")}
 
 
 def _syntax_check(html):
