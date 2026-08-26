@@ -38,6 +38,16 @@ create table if not exists time_grants (
 
 -- ═══ 2. Защита (RLS) ═══
 
+-- функция «я админ?» — security definer, чтобы политика не спрашивала
+-- саму таблицу profiles (иначе бесконечная рекурсия 42P17)
+create or replace function public.is_admin()
+returns boolean
+language sql stable security definer set search_path = public
+as $$ select exists (select 1 from public.profiles p
+                     where p.user_id = auth.uid() and p.role = 'admin') $$;
+revoke all on function public.is_admin() from public;
+grant execute on function public.is_admin() to authenticated;
+
 alter table favorites   enable row level security;
 alter table settings    enable row level security;
 alter table profiles    enable row level security;
@@ -53,7 +63,7 @@ create policy "свои настройки" on settings
 
 drop policy if exists "свой профиль чтение" on profiles;
 create policy "свой профиль чтение" on profiles
-  for select using (auth.uid() = user_id or exists (select 1 from profiles p where p.user_id = auth.uid() and p.role = 'admin'));
+  for select using (auth.uid() = user_id or public.is_admin());
 
 drop policy if exists "свой профиль создание" on profiles;
 create policy "свой профиль создание" on profiles
@@ -65,15 +75,15 @@ create policy "свой профиль обновление" on profiles
 
 drop policy if exists "своё время чтение" on time_grants;
 create policy "своё время чтение" on time_grants
-  for select using (auth.uid() = user_id or exists (select 1 from profiles p where p.user_id = auth.uid() and p.role = 'admin'));
+  for select using (auth.uid() = user_id or public.is_admin());
 
 drop policy if exists "выдача только админом" on time_grants;
 create policy "выдача только админом" on time_grants
-  for insert with check (exists (select 1 from profiles p where p.user_id = auth.uid() and p.role = 'admin'));
+  for insert with check (public.is_admin());
 
 drop policy if exists "снятие только админом" on time_grants;
 create policy "снятие только админом" on time_grants
-  for delete using (exists (select 1 from profiles p where p.user_id = auth.uid() and p.role = 'admin'));
+  for delete using (public.is_admin());
 
 -- ═══ 3. Назначить админа ═══
 -- Замени ПОЧТУ_ВЛАДЕЛЬЦА на свой email (тот, которым войдёшь в панель) и выполни.
