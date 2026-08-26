@@ -933,13 +933,14 @@ function refreshAd(id, btn){
 function cssEsc(u){ return (window.CSS&&CSS.escape)?CSS.escape(u):u.replace(/[^\w\-]/g,"\\$&"); }
 /* ===== избранное ===== */
 var FAV={}, favOn=false;
+function favKey(){ var u=supaUser(); return u?("kl_fav_"+u.id):"kl_fav"; }
 try{ FAV=JSON.parse(localStorage.getItem("kl_fav")||"{}"); }catch(e){ FAV={}; }
 try{ favOn=localStorage.getItem("kl_favon")==="1"; }catch(e){}
 function favSave(){
-  try{ localStorage.setItem("kl_fav",JSON.stringify(FAV)); }catch(e){
+  try{ localStorage.setItem(favKey(),JSON.stringify(FAV)); }catch(e){
     var ks=Object.keys(FAV);
     if(ks.length>50){ ks.slice(0,ks.length-50).forEach(function(k){ delete FAV[k]; });
-      try{ localStorage.setItem("kl_fav",JSON.stringify(FAV)); }catch(e2){} }
+      try{ localStorage.setItem(favKey(),JSON.stringify(FAV)); }catch(e2){} }
   }
   var n=Object.keys(FAV).length, el=$("favCnt");
   if(el) el.textContent=n;
@@ -1215,6 +1216,8 @@ async function supaAuthCore(m,p,st){
     }
     supaSave({access_token:j.access_token,refresh_token:j.refresh_token,
       expires_at:Date.now()+(j.expires_in||3600)*1000,user:j.user});
+    try{ FAV=JSON.parse(localStorage.getItem(favKey())||"{}"); }catch(e){ FAV={}; }   // личная библиотека
+    if(favOn) render();
     return true;
   }catch(e){ st(supaErrText(e),"err"); return false; }
 }
@@ -1359,7 +1362,10 @@ function gateUpd(){
 async function gateOut(){
   var tok=await supaToken();
   if(tok){ try{ await fetch(SUPA.url+"/auth/v1/logout",{method:"POST",headers:supaH(tok)}); }catch(e){} }
-  supaClear(); accRender(); updAccUi(); gateUpd(); gateSt("Вышли. Избранное осталось в этом браузере.","ok");
+  supaClear();
+  try{ FAV=JSON.parse(localStorage.getItem(favKey())||"{}"); }catch(e){ FAV={}; }
+  if(favOn) render();
+  accRender(); updAccUi(); gateUpd(); gateSt("Вышли. Избранное осталось в этом браузере.","ok");
 }
 function accOpen(){ if(!supaOn()) return; accRender(); $("accOvl").classList.add("open"); }
 function accClose(){ $("accOvl").classList.remove("open"); }
@@ -1374,7 +1380,10 @@ function accClose(){ $("accOvl").classList.remove("open"); }
   $("accOut").onclick=async function(){
     var tok=await supaToken();
     if(tok){ try{ await fetch(SUPA.url+"/auth/v1/logout",{method:"POST",headers:supaH(tok)}); }catch(e){} }
-    supaClear(); accRender(); updAccUi(); gateUpd(); accSt("Вышли. Избранное осталось в этом браузере.","ok");
+    supaClear();
+  try{ FAV=JSON.parse(localStorage.getItem(favKey())||"{}"); }catch(e){ FAV={}; }
+  if(favOn) render();
+  accRender(); updAccUi(); gateUpd(); accSt("Вышли. Избранное осталось в этом браузере.","ok");
   };
   $("gGo").onclick=gateAuth;
   $("gPass").addEventListener("keydown",function(e){ if(e.key==="Enter") gateAuth(); });
@@ -1383,7 +1392,10 @@ function accClose(){ $("accOvl").classList.remove("open"); }
   setInterval(function(){ if(supaOn()&&supaUser()&&SUPA.exp&&Date.now()>SUPA.exp&&!$("gate").classList.contains("off")) return;
     if(supaOn()&&supaUser()&&SUPA.exp&&Date.now()>SUPA.exp){ gateUpd(); accRender(); } },30000);
   document.addEventListener("keydown",function(e){ if(e.key==="Escape") accClose(); });
-  if(supaOn()&&supaUser()){ supaToken().then(function(t){ if(t){ updAccUi(); supaSync(false); } else gateUpd(); }); }
+  if(supaOn()&&supaUser()){
+    try{ FAV=JSON.parse(localStorage.getItem(favKey())||"{}"); }catch(e){ FAV={}; }
+    supaToken().then(function(t){ if(t){ updAccUi(); supaSync(false); } else gateUpd(); });
+  }
   else gateUpd();
   updAccUi();
 })();
@@ -1501,7 +1513,7 @@ function freshChip(ts, ok){
 }
 function refreshData(){
   var wasBoot=booted;
-  fetch("ads.json?"+Date.now(),{cache:"no-store"}).then(function(r){return r.json();}).then(function(d){
+  fetch("__DATAFILE__?"+Date.now(),{cache:"no-store"}).then(function(r){return r.json();}).then(function(d){
     if(d.tpl&&TPL&&d.tpl!==TPL){ location.reload(); return; }   // сменился шаблон — перезагрузимся
     if(d.ver===DATAV&&ads.length>=(d.ads||[]).length){ freshChip(d.ts,true); return; }
     DATAV=d.ver; ads=d.ads.slice(); TOTAL=d.total||ads.length; $("cntAll").textContent=TOTAL;
