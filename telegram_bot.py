@@ -137,11 +137,28 @@ def _caption(a):
         lines.append("🏷 " + e(cp))
     if a.get("img_count"):
         lines.append(f"📸 {a['img_count']} фото")
-    descr = (a.get("descr") or "").strip()
+    descr = (a.get("descr_full") or a.get("descr") or "").strip()
     if descr:
         lines.append("—\n<i>" + e(descr[:420].strip()) + ("…" if len(descr) > 420 else "") + "</i>")
     lines.append("\n📡 Triton Scraper")
     return "\n".join(lines)[:1024]
+
+
+def _stored_gallery(a):
+    """Галерея из базы (обогащение 3-в-1): мгновенно, без похода на живой сайт."""
+    try:
+        raw = json.loads(a.get("imgs") or "[]")
+    except Exception:
+        return []
+    out = []
+    for u in raw:
+        u = (u or "").strip()
+        if not u:
+            continue
+        if re.fullmatch(r"[0-9a-f-]{36}", u):   # uuid → полный URL
+            u = f"https://img.kleinanzeigen.de/api/v1/prod-ads/images/{u[:2]}/{u}?rule=$_59.JPG"
+        out.append(u)
+    return out[:10]
 
 
 def _send_card(token, chat_id, ad_id):
@@ -149,11 +166,13 @@ def _send_card(token, chat_id, ad_id):
     if not a:
         _call(token, "sendMessage", chat_id=chat_id,
               text="Не нашёл объявление " + html.escape(str(ad_id)) +
-                   " в базе. Пришли id или ссылку объявления заново —(monitored window 2 дня).")
+                   " в базе (окно мониторинга — 2 дня). Пришли id или ссылку заново.")
         return
     text = _caption(a)
     kb = {"inline_keyboard": [[{"text": "Открыть на Kleinanzeigen", "url": a["url"]}]]}
-    imgs = _gallery(_fetch(a["url"]), a.get("img"))
+    imgs = _stored_gallery(a)
+    if not imgs:
+        imgs = _gallery(_fetch(a["url"]), a.get("img"))   # запасной путь: живая страница
     if len(imgs) > 1:
         media = [{"type": "photo", "media": imgs[0], "caption": text, "parse_mode": "HTML"}]
         media += [{"type": "photo", "media": u} for u in imgs[1:]]
