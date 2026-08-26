@@ -1148,22 +1148,43 @@ function accRender(){
   }
   accSt("");
 }
-async function supaAuth(mode){
+async function supaAuth(){
   var m=$("accMail").value.trim(), p=$("accPass").value;
   if(!m||!p){ accSt("Введи почту и пароль.","err"); return; }
-  var b=$("accGo"); b.disabled=true; b.textContent="Подождите…"; accSt("");
+  if(p.length<6){ accSt("Пароль минимум 6 символов.","err"); return; }
+  var b=$("accGo"); b.disabled=true; accSt("");
+  function em(x){ return String((x&&(x.error_description||x.msg||x.error))||""); }
   try{
-    var r=await fetch(SUPA.url+(mode==="up"?"/auth/v1/signup":"/auth/v1/token?grant_type=password"),
+    b.textContent="Проверяем…";
+    var r=await fetch(SUPA.url+"/auth/v1/token?grant_type=password",
       {method:"POST",headers:supaH(),body:JSON.stringify({email:m,password:p})});
     var j=await r.json().catch(function(){return {};});
-    if(!r.ok) throw new Error(j.msg||j.error_description||j.error||("HTTP "+r.status));
-    if(!j.access_token){ accSt("Почта не подтверждена — открой ссылку из письма и войди.","ok"); return; }
+    if(!r.ok){
+      var e=em(j)||("HTTP "+r.status);
+      if(!/invalid (login )?credential/i.test(e)){ accSt(supaErrText(new Error(e)),"err"); return; }
+      // неверный пароль ИЛИ аккаунта нет — Supabase не различает. Пробуем создать:
+      b.textContent="Создаём аккаунт…";
+      var rs=await fetch(SUPA.url+"/auth/v1/signup",
+        {method:"POST",headers:supaH(),body:JSON.stringify({email:m,password:p})});
+      var js=await rs.json().catch(function(){return {};});
+      if(!rs.ok){
+        var e2=em(js)||("HTTP "+rs.status);
+        accSt(/already/i.test(e2)?"Такой аккаунт уже есть — неверный пароль.":supaErrText(new Error(e2)),"err");
+        return;
+      }
+      if(!js.access_token){
+        accSt("Аккаунт создан ✓ Открой ссылку из письма для подтверждения, потом войди.","ok");
+        return;
+      }
+      r=rs; j=js;   // создан и сразу вошли (подтверждение выключено)
+    }
     supaSave({access_token:j.access_token,refresh_token:j.refresh_token,
       expires_at:Date.now()+(j.expires_in||3600)*1000,user:j.user});
-    accRender(); accSt("Вошли как "+(j.user&&j.user.email||m)+" ✓","ok");
+    accRender(); updAccUi();
+    accSt("Вошли как "+((j.user&&j.user.email)||m)+" ✓","ok");
     await supaSync(true);
   }catch(e){ accSt(supaErrText(e),"err"); }
-  b.disabled=false; b.textContent="Войти или создать";
+  finally{ b.disabled=false; b.textContent="Войти или создать"; }
 }
 async function supaSync(first){
   var tok=await supaToken();
@@ -1272,7 +1293,7 @@ function accClose(){ $("accOvl").classList.remove("open"); }
   o.addEventListener("click",function(e){ if(e.target===o) accClose(); });
   $("accX").onclick=accClose;
   $("btnAcc").onclick=accOpen;
-  $("accGo").onclick=function(){ supaAuth("in"); };
+  $("accGo").onclick=function(){ supaAuth(); };
   $("accMail")&&null;
   $("accSync").onclick=function(){ supaSync(false); };
   $("accOut").onclick=async function(){
