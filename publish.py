@@ -174,6 +174,16 @@ def collect_ads(limit=500, board_cats=(161, 80, 153, 192), board_hours=6, board_
     return ads, total, cat_rows
 
 
+def data_filename():
+    """Имя файла данных: негадаемое (md5 от секретного slug) — случайный посетитель
+    here.now не вытащит объявления прямой ссылкой /ads.json. Slug в репо НЕ хранится."""
+    slug = os.environ.get("HERENOW_SLUG", "").strip()
+    if not slug:
+        slug, _ = load_claim()
+        slug = slug or os.environ.get("HERENOW_SLUG", "local").strip() or "local"
+    return "d_" + hashlib.md5(("kl19::" + slug).encode()).hexdigest()[:12] + ".json"
+
+
 def build():
     ads, total, cat_rows = collect_ads(limit=2600)
     html_tpl = open(TEMPLATE, encoding="utf-8").read()
@@ -189,7 +199,8 @@ def build():
     version = f"v{int(stamp.timestamp())}.{total}"
     ts_iso = stamp.isoformat(timespec="seconds")
 
-    # ads.json — живые данные: страница подтягивает их сама, без перезагрузки
+    dfile = data_filename()
+    # живые данные: страница подтягивает их сама, без перезагрузки
     data = {"tpl": tpl_hash, "ver": version, "ts": ts_iso, "total": total, "ads": ads}
     data_str = json.dumps(data, ensure_ascii=False)
     with open(OUT_DATA, "w", encoding="utf-8") as f:
@@ -205,7 +216,7 @@ def build():
     if state.get("sig") != sig or not os.path.exists(OUT):
         html = (html_tpl
                 .replace("__TGBOT__", tg_name)
-                .replace("/*__ADS__*/[]", json.dumps(ads[:150], ensure_ascii=False))
+                .replace("/*__ADS__*/[]", "[]")   # объявления НЕ вшиваем: исходник страницы чистый
                 .replace("/*__CATS__*/[]", json.dumps(cat_rows, ensure_ascii=False))
                 .replace("__TOTAL__", str(total))
                 .replace("__STAMP__", stamp.strftime("%d.%m.%Y %H:%M UTC"))
@@ -213,7 +224,8 @@ def build():
                 .replace("__TPLHASH__", tpl_hash)
                 .replace("__VERSION__", version)
                 .replace("__SUPA_URL__", supa_url)
-                .replace("__SUPA_KEY__", supa_key))
+                .replace("__SUPA_KEY__", supa_key)
+                .replace("__DATAFILE__", dfile))
         _syntax_check(html)
         with open(OUT, "w", encoding="utf-8") as f:
             f.write(html)
@@ -224,7 +236,7 @@ def build():
 
 
     print(f"✔ сборка: {len(ads)} объявлений, ads.json {len(data_str) // 1024} КБ, версия {version}")
-    return {OUT_DATA: ("ads.json", "application/json; charset=utf-8"),
+    return {OUT_DATA: (dfile, "application/json; charset=utf-8"),
             OUT_VER: ("version.txt", "text/plain; charset=utf-8"),
             OUT: ("index.html", "text/html; charset=utf-8")}
 
