@@ -1085,9 +1085,17 @@ $("ovl").addEventListener("click",function(e){
 });
 
 /* ===== Аккаунт Supabase (опционально): вход + синхронизация избранного/настроек ===== */
-var SUPA={url:"__SUPA_URL__", key:"__SUPA_KEY__"};
+var SUPA={url:"__SUPA_URL__", key:"__SUPA_KEY__", exp:0, expErr:false};
 var SUPA_SESS=null, supaSyncT=null, supaSetT=null;
 function supaOn(){ return !!(SUPA.url&&SUPA.key); }
+function supaActive(){ return !!(supaOn()&&supaUser()&&SUPA.exp&&Date.now()<SUPA.exp); }
+function supaFmtRem(ms){
+  if(ms<=0) return "истекло";
+  var m=Math.floor(ms/60000), d=Math.floor(m/1440), hh=Math.floor((m%1440)/60), mm=m%60;
+  if(d>0) return d+" д "+hh+" ч";
+  if(hh>0) return hh+" ч "+mm+" м";
+  return mm+" м";
+}
 function supaH(tok){ var h={"apikey":SUPA.key,"Content-Type":"application/json"};
   if(tok) h["Authorization"]="Bearer "+tok; return h; }
 function supaLoad(){ try{ return JSON.parse(localStorage.getItem("kl_supa")||"null"); }catch(e){ return null; } }
@@ -1123,8 +1131,12 @@ function accRender(){
   var u=supaUser(), body=$("accBody"), title=$("accTitle");
   if(u){
     title.textContent="Аккаунт";
+    var rem=SUPA.exp?SUPA.exp-Date.now():-1;
+    var tline=rem>0
+      ?('<div class="cap" style="color:var(--live)">⏳ доступ: '+supaFmtRem(rem)+' — до '+new Date(SUPA.exp).toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})+'</div>')
+      :'<div class="cap" style="color:var(--err)">⛔ '+(SUPA.exp?"время аккаунта истекло":"время не выдано")+' — синхронизация выключена</div>';
     body.innerHTML='<div class="who"><div class="av">'+esc((u.email||"?")[0].toUpperCase())+'</div>'+
-      '<div><div class="mail">'+esc(u.email||"")+'</div><div class="cap">избранное и настройки синхронизируются автоматически</div></div></div>';
+      '<div><div class="mail">'+esc(u.email||"")+'</div>'+tline+'</div></div>';
     $("accLoggedRow").style.display="flex";
     $("accGo").style.display="none";
   } else {
@@ -1156,6 +1168,27 @@ async function supaAuth(mode){
 async function supaSync(first){
   var tok=await supaToken();
   if(!tok){ updAccUi(); return; }
+  // профиль: чтобы админ видел аккаунт в панели (ошибки не критичны)
+  try{
+    await fetch(SUPA.url+"/rest/v1/profiles?on_conflict=user_id",
+      {method:"POST",headers:Object.assign(supaH(tok),{"Prefer":"resolution=merge-duplicates"}),
+       body:JSON.stringify([{user_id:supaUser().id,email:supaUser().email}])});
+  }catch(e){}
+  // время доступа: самая поздняя выдача
+  try{
+    var rg=await fetch(SUPA.url+"/rest/v1/time_grants?select=valid_until&user_id=eq."+supaUser().id+"&order=valid_until.desc&limit=1",
+      {headers:supaH(tok)});
+    if(rg.ok){ var gg=await rg.json(); SUPA.exp=gg.length?Date.parse(gg[0].valid_until):0; SUPA.expErr=false; }
+    else { SUPA.expErr=true; }   // таблицы нет — SQL не выполнен
+  }catch(e){ SUPA.expErr=true; }
+  if(!supaActive()){
+    accRender();
+    updAccUi();
+    accSt(SUPA.expErr?"Таблицы Supabase не созданы — выполни SQL из инструкции."
+      :(SUPA.exp?"Время аккаунта истекло — синхронизация приостановлена, продлить может администратор."
+      :"Время не выдано — обратись к администратору за доступом."),"err");
+    return;
+  }
   try{
     // 1) облачные избранное
     var r=await fetch(SUPA.url+"/rest/v1/favorites?select=ad_id,data&order=updated_at.asc&limit=400",
@@ -1183,6 +1216,7 @@ async function supaSync(first){
       if(rs.ok){ var arr=await rs.json();
         if(arr.length&&arr[0].data){ supaApplySettings(arr[0].data); supaPushSettings(); } }
     }
+    accRender();
     accSt(first?"Синхронизировано ✓":"Обновлено ✓","ok");
   }catch(e){ accSt(supaErrText(e),"err"); }
   updAccUi();
@@ -1199,7 +1233,7 @@ function supaApplySettings(d){
   }catch(e){}
 }
 function supaPushSettings(){
-  if(!supaOn()||!supaUser()) return;
+  if(!supaActive()) return;
   clearTimeout(supaSetT);
   supaSetT=setTimeout(async function(){
     var tok=await supaToken(); if(!tok) return;
@@ -1211,7 +1245,7 @@ function supaPushSettings(){
   },1500);
 }
 function supaFavChange(id){
-  if(!supaOn()||!supaUser()) return;
+  if(!supaActive()) return;
   clearTimeout(supaSyncT);
   supaSyncT=setTimeout(async function(){
     var tok=await supaToken(); if(!tok) return;
