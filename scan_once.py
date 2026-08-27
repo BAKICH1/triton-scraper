@@ -144,6 +144,35 @@ def enrich_member_since(limit: int = 150, delay: float = 1.0, batch: int = 25,
     return got
 
 
+def ensure_sources():
+    """Сетка источников ×10 охвата: глобальная лента + ВСЕ корневые категории.
+
+    Идемпотентно: чистим только pages/active, не ломая ручные источники.
+    Глубина: горячие ниши (Elektronik/Haus&Garten/Mode) — 3 страницы, остальные — 2.
+    """
+    import sqlite3
+    prior = {161: 3, 80: 3, 153: 3}
+    conn = sqlite3.connect(db.DB_PATH)
+    conn.row_factory = sqlite3.Row
+    have = {(r["type"], r["value"]): r for r in conn.execute("SELECT * FROM sources")}
+    if ("global", "") not in have:
+        conn.execute("INSERT INTO sources(type,value,label,pages,active) "
+                     "VALUES('global','','Вся Германия (все категории)',2,1)")
+    for r in conn.execute("SELECT id,slug,name FROM categories WHERE parent IS NULL").fetchall():
+        key = ("category", f"{r['slug']}:{r['id']}")
+        pages = prior.get(r["id"], 2)
+        if key in have:
+            conn.execute("UPDATE sources SET pages=?, active=1 WHERE id=?",
+                         (pages, have[key]["id"]))
+        else:
+            conn.execute("INSERT INTO sources(type,value,label,pages,active) "
+                         "VALUES(?,?,?,?,1)", ("category", key[1], r["name"], pages))
+    conn.commit()
+    n = conn.execute("SELECT COUNT(*) c FROM sources WHERE active=1").fetchone()["c"]
+    conn.close()
+    print(f"источники: {n} активных (сетка категорий гарантирует ~10x охват)")
+
+
 def main() -> int:
     slug = os.environ.get("HERENOW_SLUG", "").strip()
     claim = os.environ.get("HERENOW_CLAIM", "").strip()
@@ -151,6 +180,7 @@ def main() -> int:
         with open(os.path.join(db.DATA_DIR, "herenow_claim.txt"), "w", encoding="utf-8") as f:
             f.write(f"site: https://{slug}.here.now\nslug: {slug}\nclaimToken: {claim}\n")
     db.init()
+    ensure_sources()
     # свежая база (CI-раннер): заполняем дерево категорий — без него пустые
     # селекторы, мёртвая доска и очередь просмотров доски
     if not db.get_categories():
