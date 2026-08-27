@@ -1,6 +1,6 @@
 {
   "scan_interval_sec": 60,
-  "global_pages": 3,
+  "global_pages": 10,
   "request_delay_sec": 4,
   "backoff_max_sec": 600,
   "retention_days": 2,
