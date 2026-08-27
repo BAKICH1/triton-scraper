@@ -80,6 +80,7 @@ class Monitor(threading.Thread):
         self.new_in_last_scan = 0
         self._wake = threading.Event()
         self._backoff = 0
+        self.last_block_ts = 0.0
 
     # ---------- управление ----------
     def wake(self):
@@ -200,6 +201,7 @@ class Monitor(threading.Thread):
                     except scraper.BlockedError as e:
                         self.status = "blocked"
                         self.last_error = str(e)
+                        self.last_block_ts = time.time()
                         self._backoff = min(self._backoff * 2 if self._backoff else 90, self.cfg["backoff_max_sec"])
                         time.sleep(min(self._backoff, 120) if attempt else 20)
                     except Exception as e:
@@ -219,8 +221,10 @@ class Monitor(threading.Thread):
                 db.cleanup_ads(self.cfg["retention_days"])
         except Exception:
             pass
-        # просмотры: понемногу, т.к. каждый запрос +1 к счётчику объявления
-        if self.status != "blocked":
+        # просмотры: понемногу, т.к. каждый запрос +1 к счётчику объявления.
+        # Блок скана не отменяет замеры (другой клиент, другой темп) — только
+        # свежий блок (<90 с): значит IP в бане и для просмотров.
+        if self.status != "blocked" or (time.time() - self.last_block_ts > 90):
             try:
                 ids = db.views_plan(
                     board_cats=tuple(self.cfg.get("views_priority_cats", [161, 80, 153, 192])),
