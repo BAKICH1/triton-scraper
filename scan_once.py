@@ -201,7 +201,7 @@ def main() -> int:
     stop_enr = threading.Event()
     def _enrich_worker():
         try:
-            enrich_member_since(stop=stop_enr)
+            enrich_member_since(limit=90, stop=stop_enr)   # потолок: запросы приоритетнее просмотрам
         except Exception as e:
             print("самореги: поток остановился:", type(e).__name__, e)
     enr = threading.Thread(target=_enrich_worker, daemon=True, name="enrich")
