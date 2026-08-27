@@ -118,7 +118,23 @@ class Monitor(threading.Thread):
     def _source_urls(self, src):
         pages = int(src.get("pages") or 1)
         if src["type"] == "global":
-            return scraper.global_feed_urls(max(self.cfg["global_pages"], 1))
+            urls = scraper.global_feed_urls(max(self.cfg["global_pages"], 1))
+            # свежесть гарантируют первые 4 страницы (каждый цикл); глубокие —
+            # по 3 за раз по кругу: экономим ~90 с на просмотры каждую итерацию
+            if len(urls) > 4:
+                try:
+                    off = int(db.kv_get("glob_rot", 0) or 0)
+                except Exception:
+                    off = 0
+                tail = urls[4:]
+                i = off % len(tail)
+                rot = (tail[i:] + tail[:i])[:3]
+                try:
+                    db.kv_set("glob_rot", (off + 3) % len(tail))
+                except Exception:
+                    pass
+                urls = urls[:4] + rot
+            return urls
         if src["type"] == "category":
             try:
                 slug, cid = src["value"].split(":")
@@ -167,6 +183,22 @@ class Monitor(threading.Thread):
             sources = db.list_sources(only_active=True)
         except Exception:
             sources = [{"type": "global", "pages": 2}]
+        # категории — по k за раунд по кругу: полный круг ~4 цикла (~25 мин),
+        # новые объявления всё равно ловит глобальная лента первых страниц
+        cats = [s for s in sources if s["type"] == "category"]
+        k = max(1, int(self.cfg.get("cats_per_round", 4)))
+        if len(cats) > k:
+            try:
+                off = int(db.kv_get("cat_rot", 0) or 0)
+            except Exception:
+                off = 0
+            i = off % len(cats)
+            pick = (cats[i:] + cats[:i])[:k]
+            try:
+                db.kv_set("cat_rot", (off + k) % len(cats))
+            except Exception:
+                pass
+            sources = [s for s in sources if s["type"] != "category"] + pick
         for src in sources:
             urls = self._source_urls(src)
             for url in urls:
