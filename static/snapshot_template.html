@@ -1503,6 +1503,9 @@ favSave(); renderColSel(); updTitle(); render(); scan(true);
 setInterval(function(){ if(auto&&document.visibilityState==="visible") scan(false); },60000);
 
 /* ===== Живые данные: version.txt → ads.json, без перезагрузки страницы ===== */
+document.addEventListener("visibilitychange",function(){
+  if(!document.hidden && window.__pollNow) window.__pollNow();
+});
 var LASTTS=TSI;
 function freshChip(ts, ok){
   if(ts) LASTTS=ts;
@@ -1512,6 +1515,7 @@ function freshChip(ts, ok){
   el.classList.toggle("stale", !ok||stale);
 }
 function refreshData(){
+  if(document.hidden) return;   // фоновая вкладка не качает мегабайты — обновится при возврате
   var wasBoot=booted;
   fetch("__DATAFILE__?"+Date.now(),{cache:"no-store"}).then(function(r){return r.json();}).then(function(d){
     if(d.tpl&&TPL&&d.tpl!==TPL){ location.reload(); return; }   // сменился шаблон — перезагрузимся
@@ -1541,7 +1545,9 @@ function refreshData(){
     freshChip(d.ts,true); render(); updTitle();
   }).catch(function(){ freshChip(null,false); });
 }
+window.__pollNow=checkVersion;   // visibilitychange дёрнет сразу при возврате на вкладку
 function checkVersion(){
+  if(document.hidden) return;   // вернёмся к вкладке — visibilitychange вызовет сразу
   fetch("version.txt?"+Date.now(),{cache:"no-store"}).then(function(r){return r.text();}).then(function(t){
     t=t.trim();
     if(t&&t!==DATAV&&t.length<40) refreshData();
