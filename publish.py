@@ -112,12 +112,12 @@ def collect_ads(limit=500, board_cats=(161, 80, 153, 192), board_hours=6, board_
         a = dict(r) | {"cat_name": cats.get(r["category_id"], ""), "vr": _view_rate(r)}
         a["descr"] = (a["descr"] or "")[:140] if is_feed else ""
         # полное описание и галерея — карточка открывается мгновенно, без прокси
-        a["descr_full"] = (a.get("descr_full") or None) and a["descr_full"][:500]
+        a["descr_full"] = (a.get("descr_full") or None) and a["descr_full"][:300]   # компакт: карточке хватает
         try:
             gal = json.loads(a.get("imgs") or "[]")
         except Exception:
             gal = []
-        a["imgs"] = [u for u in gal][:6]
+        a["imgs"] = [u for u in gal][:5]
         for k in ("views_prev_at", "views_at"):  # служебное наружу не отдаём
             a.pop(k, None)   # views_prev нужен клиенту: прирост за цикл
         ads.append(a)
@@ -185,7 +185,7 @@ def data_filename():
 
 
 def build():
-    ads, total, cat_rows = collect_ads(limit=4200)
+    ads, total, cat_rows = collect_ads(limit=3200)
     html_tpl = open(TEMPLATE, encoding="utf-8").read()
     tg_name = ""
     try:
