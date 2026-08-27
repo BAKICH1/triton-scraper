@@ -254,6 +254,9 @@ def views_plan(board_cats=(161, 80, 153, 192), hot_minutes=22, board_n=48,
     now = datetime.now(timezone.utc)
     cutoff = _iso(now - timedelta(hours=refresh_after_hours))
     hot_cut = _iso(now - timedelta(minutes=hot_minutes))
+    # первый замер: окно 45 мин, не hot_minutes — объявления входят в базу через
+    # стейджинг (~20 мин), при 22-мин окне успевали бы лишь 2 минуты
+    first_cut = _iso(now - timedelta(minutes=45))
     recent = _iso(now - timedelta(seconds=100))
     stale_measure = _iso(now - timedelta(minutes=15))
     excl = " AND ".join(["title NOT LIKE ?"] * len(exclude_titles))
@@ -283,7 +286,7 @@ def views_plan(board_cats=(161, 80, 153, 192), hot_minutes=22, board_n=48,
             """SELECT id FROM ads
                WHERE first_seen >= ? AND views IS NULL AND %s
                ORDER BY first_seen DESC LIMIT ?""" % excl,
-            (hot_cut, *excl_args, first_n)).fetchall())
+            (first_cut, *excl_args, first_n)).fetchall())
         _add(_conn.execute(
             """SELECT id FROM ads
                WHERE first_seen >= ? AND views IS NOT NULL AND views_at < ? AND %s
