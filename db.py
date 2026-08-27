@@ -272,16 +272,20 @@ def views_plan(board_cats=(161, 80, 153, 192), hot_minutes=22, board_n=48,
 
     with _lock:
         # доска: поровну на каждую категорию столбца (с дочерними), иначе быстрый
-        # приток Elektronik съедает весь приоритет, а Haus&Garten/Mode не меряются
+        # приток Elektronik съедает весь приоритет, а Haus&Garten/Mode не меряются.
+        # Пул — 2 часа, НЕ «новейшие N»: при потоке x10 окно в N объявлений
+        # закрывается за минуты, и столбцы оставались бы без глазков вечно
+        stale_board = _iso(now - timedelta(minutes=25))
+        board_pool = _iso(now - timedelta(minutes=120))
         per_cat = max(2, board_n // max(1, len(board_cats)))
         for cid in board_cats:
             _add(_conn.execute(
                 """SELECT id FROM ads
-                   WHERE id IN (SELECT id FROM ads ORDER BY first_seen DESC LIMIT ?)
+                   WHERE first_seen >= ?
                      AND category_id IN (SELECT id FROM categories WHERE id=? OR parent=?)
                      AND (views IS NULL OR views_at IS NULL OR views_at < ?)
                    ORDER BY (views IS NULL) DESC, first_seen DESC LIMIT ?""",
-                (published_limit, cid, cid, cutoff, per_cat)).fetchall())
+                (board_pool, cid, cid, stale_board, per_cat)).fetchall())
         _add(_conn.execute(
             """SELECT id FROM ads
                WHERE first_seen >= ? AND views IS NULL AND %s
