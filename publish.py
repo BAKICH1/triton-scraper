@@ -185,7 +185,7 @@ def data_filename():
 
 
 def build():
-    ads, total, cat_rows = collect_ads(limit=2600)
+    ads, total, cat_rows = collect_ads(limit=4200)
     html_tpl = open(TEMPLATE, encoding="utf-8").read()
     tg_name = ""
     try:
