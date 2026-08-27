@@ -15,9 +15,9 @@
     192
   ],
   "hot_window_min": 22,
-  "views_board_n": 48,
-  "views_hot_first": 14,
-  "views_hot_retop": 16,
+  "views_board_n": 56,
+  "views_hot_first": 30,
+  "views_hot_retop": 20,
   "views_exclude_titles": [
     "iphone",
     "айфон",
@@ -25,5 +25,5 @@
     "АЙФОН"
   ],
   "republish_sec": 90,
-  "views_reterm": 10
+  "views_reterm": 20
 }
